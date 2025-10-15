@@ -22,3 +22,7 @@ phpunit.result.cache
 .idea
 .vscode
 Thumbs.db
+.vcs.xml
+.idea/
+*.iml
+.vscode/
