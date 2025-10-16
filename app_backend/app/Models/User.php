@@ -35,6 +35,11 @@ class User extends Authenticatable implements JWTSubject
         ];
     }
 
+    public function travelOrders(): \Illuminate\Database\Eloquent\Relations\HasMany
+    {
+        return $this->hasMany(TravelOrder::class);
+    }
+
     public function getJWTIdentifier(): mixed
     {
         return $this->getKey();

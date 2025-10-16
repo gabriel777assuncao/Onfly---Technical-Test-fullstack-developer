@@ -14,3 +14,14 @@ Route::prefix('auth')->controller(AuthController::class)->group(function () {
     });
 });
 
+Route::middleware('auth:api')
+    ->prefix('travel-orders')
+    ->controller(\App\Http\Controllers\Travel\TravelOrderController::class)
+    ->group(function () {
+        Route::post('/', 'store');
+        Route::get('/', 'index');
+        Route::get('{travel_order}', 'show');
+//        Route::patch('{id}/status', 'updateStatus');
+    });
+
+
