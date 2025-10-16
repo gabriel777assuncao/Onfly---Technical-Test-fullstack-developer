@@ -15,11 +15,7 @@ class StoreRequest extends FormRequest
             'destination' => ['required', 'string', 'max:255'],
             'departure_date' => ['required', 'date', 'after_or_equal:today'],
             'return_date' => ['required', 'date', 'after:departure_date'],
-            'status' => [
-                'sometimes',
-                'string',
-                Rule::in(TravelOrderStatus::values()),
-            ],
+            'status' => ['prohibited'],
         ];
     }
 }

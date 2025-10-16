@@ -21,7 +21,7 @@ Route::middleware('auth:api')
         Route::post('/', 'store');
         Route::get('/', 'index');
         Route::get('{travel_order}', 'show');
-//        Route::patch('{id}/status', 'updateStatus');
+        Route::patch('{travel_order}/status', 'updateStatus');
     });
 
 
