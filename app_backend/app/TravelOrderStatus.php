@@ -19,8 +19,8 @@ enum TravelOrderStatus: string
     public function label(): string
     {
         return match($this) {
-            self::REQUESTED => 'Solicited',
-            self::APPROVED  => 'Approval',
+            self::REQUESTED => 'Requested',
+            self::APPROVED  => 'Approved',
             self::CANCELED  => 'Canceled',
         };
     }
