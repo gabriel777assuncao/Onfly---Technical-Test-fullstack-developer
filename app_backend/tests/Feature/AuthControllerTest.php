@@ -12,7 +12,7 @@ use Tests\TestCase;
 use Tymon\JWTAuth\Facades\JWTAuth;
 use Illuminate\Auth\Middleware\Authenticate;
 
-class AuthControllerTest extends TestCase
+class AuthControllerTest extends FeatureTestCase
 {
     use RefreshDatabase;
 

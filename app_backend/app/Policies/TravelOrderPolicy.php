@@ -16,4 +16,9 @@ class TravelOrderPolicy
     {
         return $order->user_id === $user->id || $user->is_admin;
     }
+
+    public function viewAny(User $user): bool
+    {
+        return true;
+    }
 }

@@ -21,8 +21,7 @@ Route::middleware('auth:api')
         Route::post('/', 'store');
         Route::get('/', 'index');
         Route::get('{travel_order}', 'show');
-        Route::patch('{travel_order}/status', 'updateStatus')
-            ->middleware('can:approve,travel_order');
+        Route::patch('{travel_order}/status', 'updateStatus');
     });
 
 
