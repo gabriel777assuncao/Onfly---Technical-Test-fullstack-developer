@@ -2,8 +2,7 @@
 
 namespace App\Policies;
 
-use App\Models\User;
-use App\Models\TravelOrder;
+use App\Models\{TravelOrder, User};
 
 class TravelOrderPolicy
 {

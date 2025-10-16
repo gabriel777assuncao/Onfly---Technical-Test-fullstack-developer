@@ -12,4 +12,3 @@ class FilterCreatedFrom implements Filter
         return $query->whereDate('created_at', '>=', $value);
     }
 }
-

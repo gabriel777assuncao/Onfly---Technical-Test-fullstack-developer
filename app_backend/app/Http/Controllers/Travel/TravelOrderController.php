@@ -4,17 +4,14 @@ namespace App\Http\Controllers\Travel;
 
 use App\Http\Controllers\Controller;
 use App\Http\Queries\API\Internal\TravelOrderQuery;
-use App\Http\Requests\Travel\StoreRequest;
-use App\Http\Requests\Travel\UpdateRequest;
+use App\Http\Requests\Travel\{StoreRequest, UpdateRequest};
 use App\Http\Resources\TravelOrderResource;
 use App\Jobs\SendTravelOrderStatus;
 use App\Models\TravelOrder;
 use App\Services\TravelOrderStatusServices;
 use App\TravelOrderStatus;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
-use Illuminate\Http\JsonResponse;
-use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
+use Illuminate\Http\{JsonResponse, Request};
 use Symfony\Component\HttpFoundation\Response;
 
 class TravelOrderController extends Controller
@@ -55,7 +52,7 @@ class TravelOrderController extends Controller
         }
 
         $paginator = $query->paginate(
-            perPage: (int)($request->input('page.size', 15))
+            perPage: (int) ($request->input('page.size', 15))
         )->appends($request->query());
 
         return response()->json(
@@ -68,8 +65,7 @@ class TravelOrderController extends Controller
         UpdateRequest $request,
         TravelOrder $travelOrder,
         TravelOrderStatusServices $travelService,
-    ): JsonResponse
-    {
+    ): JsonResponse {
         $this->authorize('approve', $travelOrder);
 
         $oldStatus = $travelOrder->status;

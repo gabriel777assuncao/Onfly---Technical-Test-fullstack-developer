@@ -3,14 +3,11 @@
 namespace Tests\Feature;
 
 use App\Models\User;
+use Illuminate\Auth\Middleware\Authenticate;
 use Illuminate\Contracts\Auth\Guard;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Support\Facades\Hash;
-use Illuminate\Support\Facades\Lang;
 use Symfony\Component\HttpFoundation\Response;
-use Tests\TestCase;
 use Tymon\JWTAuth\Facades\JWTAuth;
-use Illuminate\Auth\Middleware\Authenticate;
 
 class AuthControllerTest extends FeatureTestCase
 {
@@ -24,7 +21,7 @@ class AuthControllerTest extends FeatureTestCase
 
         config()->set('auth.defaults.guard', 'api');
         config()->set('auth.guards.api', [
-            'driver'   => 'jwt',
+            'driver' => 'jwt',
             'provider' => 'users',
         ]);
     }

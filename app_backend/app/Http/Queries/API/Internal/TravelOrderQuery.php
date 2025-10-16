@@ -2,18 +2,18 @@
 
 namespace App\Http\Queries\API\Internal;
 
+use App\Http\Filters\{
+    FilterCreatedFrom,
+    FilterCreatedTo,
+    FilterDestination,
+    FilterStatus,
+    FilterTravelFrom,
+    FilterTravelTo
+};
 use App\Http\Queries\WithAppendsQueryBuilder;
 use App\Models\TravelOrder;
 use Illuminate\Http\Request;
 use Spatie\QueryBuilder\AllowedFilter;
-use App\Http\Filters\{
-    FilterDestination,
-    FilterStatus,
-    FilterTravelFrom,
-    FilterTravelTo,
-    FilterCreatedFrom,
-    FilterCreatedTo
-};
 
 class TravelOrderQuery extends WithAppendsQueryBuilder
 {
@@ -21,7 +21,7 @@ class TravelOrderQuery extends WithAppendsQueryBuilder
     {
         $base = TravelOrder::query();
 
-        if ($request->user() && !$request->user()->is_admin) {
+        if ($request->user() && ! $request->user()->is_admin) {
             $base->where('user_id', $request->user()->id);
         }
 

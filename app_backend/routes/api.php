@@ -1,7 +1,8 @@
 <?php
 
-use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Auth\AuthController;
+use App\Http\Controllers\Travel\TravelOrderController;
+use Illuminate\Support\Facades\Route;
 
 Route::prefix('auth')->controller(AuthController::class)->group(function () {
     Route::post('register', 'register');
@@ -16,12 +17,10 @@ Route::prefix('auth')->controller(AuthController::class)->group(function () {
 
 Route::middleware('auth:api')
     ->prefix('travel-orders')
-    ->controller(\App\Http\Controllers\Travel\TravelOrderController::class)
+    ->controller(TravelOrderController::class)
     ->group(function () {
         Route::post('/', 'store');
         Route::get('/', 'index');
         Route::get('{travel_order}', 'show');
         Route::patch('{travel_order}/status', 'updateStatus');
     });
-
-

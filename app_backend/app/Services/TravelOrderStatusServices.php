@@ -2,8 +2,8 @@
 
 namespace App\Services;
 
-use App\TravelOrderStatus;
 use App\Models\TravelOrder;
+use App\TravelOrderStatus;
 use Illuminate\Validation\ValidationException;
 
 class TravelOrderStatusServices
@@ -16,12 +16,12 @@ class TravelOrderStatusServices
             return $order;
         }
 
-        if (!$from->canTransitionTo($to)) {
+        if (! $from->canTransitionTo($to)) {
             $msg = ($from === TravelOrderStatus::APPROVED && $to === TravelOrderStatus::CANCELED)
                 ? __('messages.travel_order.transition.not_allowed_after_approved')
                 : __('messages.travel_order.transition.invalid', [
                     'from' => $from->label(),
-                    'to'   => $to->label(),
+                    'to' => $to->label(),
                 ]);
 
             throw ValidationException::withMessages(['status' => $msg]);
