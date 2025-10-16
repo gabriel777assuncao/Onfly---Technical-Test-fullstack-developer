@@ -1,0 +1,25 @@
+<?php
+
+namespace App\Http\Requests\Travel;
+
+use App\TravelOrderStatus;
+use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
+
+class StoreRequest extends FormRequest
+{
+    public function rules(): array
+    {
+        return [
+            'requester_name' => ['required', 'string', 'max:255'],
+            'destination' => ['required', 'string', 'max:255'],
+            'departure_date' => ['required', 'date', 'after_or_equal:today'],
+            'return_date' => ['required', 'date', 'after:departure_date'],
+            'status' => [
+                'sometimes',
+                'string',
+                Rule::in(TravelOrderStatus::values()),
+            ],
+        ];
+    }
+}
