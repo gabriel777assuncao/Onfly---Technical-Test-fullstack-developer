@@ -15,7 +15,7 @@ abstract class FeatureTestCase extends TestCase
 
         config()->set('auth.defaults.guard', 'api');
         config()->set('auth.guards.api', [
-            'driver'   => 'jwt',
+            'driver' => 'jwt',
             'provider' => 'users',
         ]);
     }

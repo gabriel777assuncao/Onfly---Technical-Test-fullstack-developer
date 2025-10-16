@@ -3,26 +3,25 @@
 namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
-use Illuminate\Support\Arr;
 use App\Http\Requests\Auth\{LoginRequest, RegisterRequest};
 use App\Http\Resources\{JWTResource, UserResource};
 use App\Models\User;
 use Illuminate\Contracts\Auth\Guard;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\Hash;
 use Symfony\Component\HttpFoundation\Response;
 use Tymon\JWTAuth\Facades\JWTAuth;
 
 class AuthController extends Controller
 {
-    private const string BEARER = 'Bearer';
-
     private const string PASSWORD = 'password';
 
     public function __construct(
         private readonly User $users,
         private readonly Guard $auth,
-    ) {}
+    ) {
+    }
 
     public function register(RegisterRequest $request): JsonResponse
     {
@@ -79,7 +78,7 @@ class AuthController extends Controller
     private function tokenPayload(string $token): array
     {
         $ttlMinutes = JWTAuth::factory()->getTTL();
-        $expiresAt  = now()->addMinutes($ttlMinutes)->toIso8601String();
+        $expiresAt = now()->addMinutes($ttlMinutes)->toIso8601String();
 
         return [
             'token' => $token,

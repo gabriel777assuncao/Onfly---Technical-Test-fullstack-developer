@@ -2,9 +2,7 @@
 
 namespace App\Http\Requests\Travel;
 
-use App\TravelOrderStatus;
 use Illuminate\Foundation\Http\FormRequest;
-use Illuminate\Validation\Rule;
 
 class StoreRequest extends FormRequest
 {

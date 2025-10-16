@@ -10,6 +10,6 @@ class FilterDestination implements Filter
 {
     public function __invoke(Builder $query, $value, string $property)
     {
-        return $query->whereRaw('LOWER(destination) LIKE ?', ['%' . Str::lower($value) . '%']);
+        return $query->whereRaw('LOWER(destination) LIKE ?', ['%'.Str::lower($value).'%']);
     }
 }

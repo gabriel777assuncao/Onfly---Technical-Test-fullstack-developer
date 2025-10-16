@@ -2,13 +2,11 @@
 
 namespace Tests\Feature;
 
-use App\Models\User;
-use App\Models\TravelOrder;
+use App\Models\{TravelOrder, User};
 use App\TravelOrderStatus;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
 use Symfony\Component\HttpFoundation\Response;
-use Tests\TestCase;
 
 class TravelOrderControllerTest extends FeatureTestCase
 {
@@ -118,8 +116,8 @@ class TravelOrderControllerTest extends FeatureTestCase
         $user = User::factory()->create();
         $other = User::factory()->create();
 
-        $mine = TravelOrder::factory()->for($user)->count(3)->create();
-        $others = TravelOrder::factory()->for($other)->count(2)->create();
+        TravelOrder::factory()->for($user)->count(3)->create();
+        TravelOrder::factory()->for($other)->count(2)->create();
 
         $response = $this->actingAs($user, 'api')
             ->getJson('/api/travel-orders?page[size]=2&page=1');
@@ -138,8 +136,8 @@ class TravelOrderControllerTest extends FeatureTestCase
                         'updated_at',
                     ],
                 ],
-                'links' => ['first','last','prev','next'],
-                'meta'  => ['current_page','from','last_page','path','per_page','to','total'],
+                'links' => ['first', 'last', 'prev', 'next'],
+                'meta' => ['current_page', 'from', 'last_page', 'path', 'per_page', 'to', 'total'],
             ])
             ->assertJsonPath('meta.current_page', 1)
             ->assertJsonPath('meta.per_page', 15);
@@ -154,17 +152,28 @@ class TravelOrderControllerTest extends FeatureTestCase
         $user1 = User::factory()->create();
         $user2 = User::factory()->create();
 
-        $order1 = TravelOrder::factory()->for($user1)->count(2)->create();
-        $order2 = TravelOrder::factory()->for($user2)->count(2)->create();
+        TravelOrder::factory()->for($user1)->count(2)->create();
+        TravelOrder::factory()->for($user2)->count(2)->create();
 
         $response = $this->actingAs($admin, 'api')
             ->getJson('/api/travel-orders?page[size]=3&page=1');
 
         $response->assertOk()
             ->assertJsonStructure([
-                'data' => [['id','requester_name','destination','departure_date','return_date','status','created_at','updated_at']],
-                'links' => ['first','last','prev','next'],
-                'meta'  => ['current_page','per_page','total'],
+                'data' => [
+                    [
+                        'id',
+                        'requester_name',
+                        'destination',
+                        'departure_date',
+                        'return_date',
+                        'status',
+                        'created_at',
+                        'updated_at',
+                    ],
+                ],
+                'links' => ['first', 'last', 'prev', 'next'],
+                'meta' => ['current_page', 'per_page', 'total'],
             ])
             ->assertJsonPath('meta.current_page', 1)
             ->assertJsonPath('meta.per_page', 15);
@@ -175,7 +184,7 @@ class TravelOrderControllerTest extends FeatureTestCase
 
     public function test_if_update_status_is_forbidden_for_non_admin_by_route_policy(): void
     {
-        $user  = User::factory()->create(['is_admin' => false]);
+        $user = User::factory()->create(['is_admin' => false]);
         $order = TravelOrder::factory()->for($user)->create([
             'status' => TravelOrderStatus::REQUESTED->value,
         ]);
@@ -190,10 +199,9 @@ class TravelOrderControllerTest extends FeatureTestCase
     public function test_if_update_status_allows_admin_and_returns_resource_payload(): void
     {
         $admin = User::factory()->create(['is_admin' => true]);
-        $user  = User::factory()->create();
+        $user = User::factory()->create();
         $order = TravelOrder::factory()->for($user)->create([
             'status' => TravelOrderStatus::REQUESTED->value,
-//            'requester_name' => 'Ana',
         ]);
 
         $payload = ['status' => TravelOrderStatus::APPROVED->value];
