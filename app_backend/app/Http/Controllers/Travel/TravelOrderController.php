@@ -81,13 +81,7 @@ class TravelOrderController extends Controller
 
         return response()->json([
             'message' => __('messages.updated'),
-            'data' => $travelOrder->only([
-                'id',
-                'status',
-                'destination',
-                'departure_date',
-                'return_date',
-            ]),
+            'data' => TravelOrderResource::make($travelOrder),
         ]);
     }
 }

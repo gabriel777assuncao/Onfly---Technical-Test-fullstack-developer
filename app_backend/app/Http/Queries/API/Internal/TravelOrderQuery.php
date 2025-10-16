@@ -4,6 +4,7 @@ namespace App\Http\Queries\API\Internal;
 
 use App\Http\Queries\WithAppendsQueryBuilder;
 use App\Models\TravelOrder;
+use Illuminate\Http\Request;
 use Spatie\QueryBuilder\AllowedFilter;
 use App\Http\Filters\{
     FilterDestination,
@@ -16,11 +17,15 @@ use App\Http\Filters\{
 
 class TravelOrderQuery extends WithAppendsQueryBuilder
 {
-    public function __construct()
+    public function __construct(Request $request)
     {
-        parent::__construct(
-            TravelOrder::query()->where('user_id', auth()->id())
-        );
+        $base = TravelOrder::query();
+
+        if ($request->user() && !$request->user()->is_admin) {
+            $base->where('user_id', $request->user()->id);
+        }
+
+        parent::__construct($base);
 
         $this->allowedFilters([
             AllowedFilter::custom('status', new FilterStatus()),
@@ -31,8 +36,6 @@ class TravelOrderQuery extends WithAppendsQueryBuilder
             AllowedFilter::custom('created_from', new FilterCreatedFrom()),
             AllowedFilter::custom('created_to', new FilterCreatedTo()),
         ]);
-
-        $this->allowedAppends(['user']);
 
         $this->defaultSort('-created_at');
         $this->allowedSorts(['created_at', 'departure_date', 'return_date', 'destination', 'status']);
