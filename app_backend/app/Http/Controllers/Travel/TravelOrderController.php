@@ -54,19 +54,28 @@ class TravelOrderController extends Controller
         );
     }
 
-    public function updateStatus(UpdateRequest $request, TravelOrder $travelOrder, TravelOrderStatusServices $travelService): JsonResponse
+    public function updateStatus(
+        UpdateRequest $request,
+        TravelOrder $travelOrder,
+        TravelOrderStatusServices $travelService,
+    ): JsonResponse
     {
-        $from = $travelOrder->status;
-        $to = TravelOrderStatus::from($request->validated('status'));
+        $oldStatus = $travelOrder->status;
+        $newStatus = TravelOrderStatus::from($request->validated('status'));
 
-        $travelOrder = $travelService->change($travelOrder, $to);
-//        dd('aaaa');
+        $travelOrder = $travelService->change($travelOrder, $newStatus);
 
-        SendTravelOrderStatus::dispatch($travelOrder, $from->value, $to->value);
+        SendTravelOrderStatus::dispatch($travelOrder, $oldStatus->value, $newStatus->value);
 
         return response()->json([
             'message' => __('messages.updated', ['resource' => 'Travel order status']),
-            'data' => $travelOrder->only(['id','status','destination','departure_date','return_date']),
+            'data' => $travelOrder->only([
+                'id',
+                'status',
+                'destination',
+                'departure_date',
+                'return_date',
+            ]),
         ]);
     }
 }

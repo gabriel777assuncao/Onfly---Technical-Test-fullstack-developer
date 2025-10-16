@@ -16,16 +16,14 @@ class SendTravelOrderStatus implements ShouldQueue
 
     public function __construct(
         public TravelOrder $order,
-        public string $from,
-        public string $to,
+        public string $oldStatus,
+        public string $newStatus,
     ) {
-//        dd('ta vindo no job');
     }
 
     public function handle(): void
     {
-//        dd('ta vindo no job');
         $user = $this->order->user;
-        $user->notify(new TravelOrderStatusChangedNotification($this->order, $this->from, $this->to));
+        $user->notify(new TravelOrderStatusChangedNotification($this->order, $this->oldStatus, $this->newStatus));
     }
 }
