@@ -8,12 +8,20 @@ enum TravelOrderStatus: string
     case APPROVED  = 'approved';
     case CANCELED  = 'canceled';
 
+    public function canTransitionTo(self $to): bool
+    {
+        return match ($this) {
+            self::REQUESTED => in_array($to, [self::APPROVED, self::CANCELED], true),
+            self::APPROVED, self::CANCELED => false,
+        };
+    }
+
     public function label(): string
     {
         return match($this) {
-            self::REQUESTED => 'Solicitado',
-            self::APPROVED  => 'Aprovado',
-            self::CANCELED  => 'Cancelado',
+            self::REQUESTED => 'Solicited',
+            self::APPROVED  => 'Approval',
+            self::CANCELED  => 'Canceled',
         };
     }
 

@@ -61,6 +61,12 @@ services:
       - vendor:/var/www/html/vendor
     entrypoint: ["php", "/var/www/html/artisan"]
 
+  mailhog:
+    image: mailhog/mailhog
+    ports:
+      - "1025:1025"
+      - "8025:8025"
+
 volumes:
   dbdata:
   composer_cache:

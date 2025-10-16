@@ -5,10 +5,15 @@ namespace App\Http\Controllers\Travel;
 use App\Http\Controllers\Controller;
 use App\Http\Queries\API\Internal\TravelOrderQuery;
 use App\Http\Requests\Travel\StoreRequest;
+use App\Http\Requests\Travel\UpdateRequest;
 use App\Http\Resources\TravelOrderResource;
+use App\Jobs\SendTravelOrderStatus;
 use App\Models\TravelOrder;
+use App\Services\TravelOrderStatusServices;
+use App\TravelOrderStatus;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Symfony\Component\HttpFoundation\Response;
 
 class TravelOrderController extends Controller
@@ -47,5 +52,21 @@ class TravelOrderController extends Controller
             TravelOrderResource::collection($paginator)->response()->getData(true),
             Response::HTTP_OK
         );
+    }
+
+    public function updateStatus(UpdateRequest $request, TravelOrder $travelOrder, TravelOrderStatusServices $travelService): JsonResponse
+    {
+        $from = $travelOrder->status;
+        $to = TravelOrderStatus::from($request->validated('status'));
+
+        $travelOrder = $travelService->change($travelOrder, $to);
+//        dd('aaaa');
+
+        SendTravelOrderStatus::dispatch($travelOrder, $from->value, $to->value);
+
+        return response()->json([
+            'message' => __('messages.updated', ['resource' => 'Travel order status']),
+            'data' => $travelOrder->only(['id','status','destination','departure_date','return_date']),
+        ]);
     }
 }

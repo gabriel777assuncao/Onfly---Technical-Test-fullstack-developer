@@ -16,5 +16,13 @@ return [
         'processing' => 'Your order is being processed.',
         'completed' => 'Your order has been completed.',
         'cancelled' => 'Your order has been cancelled.'
-    ]
+    ],
+
+    'travel_order' => [
+        'transition' => [
+            'not_allowed_after_approved' => 'Não é permitido cancelar um pedido já aprovado.',
+            'invalid' => 'Transição inválida: :from → :to.',
+            'concurrency' => 'O status foi alterado por outro processo. Tente novamente.',
+        ],
+    ],
 ];
