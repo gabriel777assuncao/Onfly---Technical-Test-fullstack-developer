@@ -10,6 +10,7 @@ use Illuminate\Support\Facades\Lang;
 use Symfony\Component\HttpFoundation\Response;
 use Tests\TestCase;
 use Tymon\JWTAuth\Facades\JWTAuth;
+use Illuminate\Auth\Middleware\Authenticate;
 
 class AuthControllerTest extends TestCase
 {
@@ -18,6 +19,14 @@ class AuthControllerTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
+
+        $this->withoutMiddleware(Authenticate::class);
+
+        config()->set('auth.defaults.guard', 'api');
+        config()->set('auth.guards.api', [
+            'driver'   => 'jwt',
+            'provider' => 'users',
+        ]);
     }
 
     public function test_register_creates_user_and_returns_resource(): void
