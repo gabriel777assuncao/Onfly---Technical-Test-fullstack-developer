@@ -202,7 +202,6 @@ class TravelOrderControllerTest extends FeatureTestCase
         $user = User::factory()->create();
         $order = TravelOrder::factory()->for($user)->create([
             'status' => TravelOrderStatus::REQUESTED->value,
-            //            'requester_name' => 'Ana',
         ]);
 
         $payload = ['status' => TravelOrderStatus::APPROVED->value];
