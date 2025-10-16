@@ -66,11 +66,10 @@ class AuthControllerTest extends TestCase
 
     public function test_login_returns_token_on_valid_credentials(): void
     {
-        $this->partialMock(Guard::class, function ($mock) {
-            $mock->shouldReceive('attempt')
-                ->once()
-                ->andReturn('token-123');
-        });
+        JWTAuth::partialMock()
+            ->shouldReceive('attempt')
+            ->once()
+            ->andReturn('token-123');
 
         JWTAuth::partialMock()
             ->shouldReceive('factory->getTTL')
@@ -93,11 +92,10 @@ class AuthControllerTest extends TestCase
 
     public function test_login_returns_unauthorized_on_invalid_credentials(): void
     {
-        $this->partialMock(Guard::class, function ($mock) {
-            $mock->shouldReceive('attempt')
-                ->once()
-                ->andReturn(false);
-        });
+        JWTAuth::partialMock()
+            ->shouldReceive('attempt')
+            ->once()
+            ->andReturn(false);
 
         $payload = [
             'email' => 'ana@example.com',

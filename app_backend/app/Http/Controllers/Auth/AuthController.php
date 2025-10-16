@@ -62,7 +62,7 @@ class AuthController extends Controller
     {
         $credentials = $request->validated();
 
-        if (! $token = $this->auth->attempt($credentials)) {
+        if (! $token = JWTAuth::attempt($credentials)) {
             return response()->json(['message' => __('auth.unauthorized')], Response::HTTP_UNAUTHORIZED);
         }
 
