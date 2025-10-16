@@ -47,7 +47,7 @@ class AuthController extends Controller
     {
         return response()->json([
             'message' => __('auth.me'),
-            'user'    => UserResource::make($this->auth->user()),
+            'user' => UserResource::make($this->auth->user()),
         ]);
     }
 
