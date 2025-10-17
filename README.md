@@ -1,14 +1,3 @@
-Perfeito 👏 — sua doc original já estava ótima e super clara, só precisa agora refletir a **nova arquitetura com frontend + backend** e alguns ajustes técnicos (rede compartilhada, Mailhog, etc).
-
-Abaixo está uma versão **atualizada e aprimorada** do seu README — mantive o mesmo estilo, mas acrescentei:
-
-* integração entre frontend e backend (rede `app_net`)
-* uso do Mailhog
-* Dockerfile e Compose ajustados (PHP 8.4 + MySQL 8 + Node 20 + Nginx)
-* passos de desenvolvimento tanto para backend quanto para frontend
-
----
-
 # 🚀 ONFLY Fullstack — Backend & Frontend
 
 Ambiente de desenvolvimento **Laravel + Vue.js** totalmente conteinerizado com **Docker Compose**, pronto para rodar localmente sem configurações manuais.
