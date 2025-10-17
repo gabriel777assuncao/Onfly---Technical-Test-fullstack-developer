@@ -45,6 +45,7 @@ services:
     working_dir: /var/www/html
     volumes:
       - .:/var/www/html
+      - vendor:/var/www/html/vendor
       - composer_cache:/tmp/composer
     entrypoint: ["composer", "--ignore-platform-reqs"]
 
