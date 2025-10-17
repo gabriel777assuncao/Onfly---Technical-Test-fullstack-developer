@@ -2,7 +2,7 @@
 .env.*
 !.env.example
 *.log
-phpunit.result.cache
+.phpunit.result.cache
 .phpunit.cache
 /storage/*.key
 /public/storage
