@@ -20,13 +20,27 @@ services:
       MYSQL_PASSWORD: ${MYSQL_PASSWORD}
     ports:
       - "3306:3306"
+    volumes:
+      - dbdata:/var/lib/mysql
     healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "-u", "root", "-p${MYSQL_ROOT_PASSWORD}"]
+      test: ["CMD","mysqladmin","ping","-h","127.0.0.1","-u","root","-p${MYSQL_ROOT_PASSWORD}"]
       interval: 5s
       timeout: 5s
       retries: 20
+    networks: [app_net]
+
+  server:
+    image: nginx:stable-alpine
+    ports:
+      - "8000:80"
     volumes:
-      - dbdata:/var/lib/mysql
+      - .:/var/www/html
+      - ./nginx/nginx.conf:/etc/nginx/conf.d/default.conf:ro
+    depends_on:
+      php:
+        condition: service_started
+      mysql:
+        condition: service_healthy
     networks: [app_net]
 
   composer:
@@ -36,7 +50,7 @@ services:
       - .:/var/www/html
       - vendor:/var/www/html/vendor
       - composer_cache:/tmp/composer
-    entrypoint: ["composer", "--ignore-platform-reqs"]
+    entrypoint: ["composer","--ignore-platform-reqs"]
     networks: [app_net]
 
   artisan:
@@ -50,7 +64,7 @@ services:
     volumes:
       - .:/var/www/html
       - vendor:/var/www/html/vendor
-    entrypoint: ["php", "/var/www/html/artisan"]
+    entrypoint: ["php","/var/www/html/artisan"]
     networks: [app_net]
 
   mailhog:
