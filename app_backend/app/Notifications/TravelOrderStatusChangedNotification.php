@@ -22,7 +22,7 @@ class TravelOrderStatusChangedNotification extends Notification
 
     public function toMail($notifiable): MailMessage
     {
-        return (new MailMessage())
+        return new MailMessage()
             ->subject("Seu pedido de viagem foi {$this->newStatus}")
             ->greeting("Olá, {$notifiable->name}")
             ->line("Pedido #{$this->order->id} — destino: {$this->order->destination}")
