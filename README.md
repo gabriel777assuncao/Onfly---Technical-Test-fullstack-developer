@@ -1,191 +1,238 @@
-# 🚀 ONFLY Backend
+# 🚀 ONFLY Fullstack — Backend & Frontend
 
-Ambiente de desenvolvimento Laravel totalmente conteinerizado com **Docker Compose**, utilizando:
-
-* 🐘 **PHP 8.4**
-* 🐳 **Nginx (alpine)**
-* 🧱 **MySQL 8.0**
-* 📦 **Composer e Artisan containers**
-
-> Este projeto foi criado como ambiente de desenvolvimento Laravel padronizado, fácil de reproduzir em qualquer máquina.
+Ambiente de desenvolvimento **Laravel + Vue.js** totalmente conteinerizado com **Docker Compose**, pronto para rodar localmente sem configurações manuais.
 
 ---
 
 ## 🧩 Estrutura do Projeto
 
 ```
-app_backend/
-├── app/                # Código principal do Laravel
-├── bootstrap/
-├── config/
-├── database/
-├── docker-compose.yaml # Orquestra os serviços Docker
-├── dockerfiles/        # (opcional) pasta de Dockerfiles customizados
-├── nginx/
-│   └── nginx.conf      # Configuração do servidor Nginx
-├── public/
-├── resources/
-├── routes/
-├── storage/            # Arquivos gerados em tempo de execução (ignorado no Git)
-├── vendor/             # Dependências PHP (ignorado no Git)
-├── artisan
-├── composer.json
-├── composer.lock
-├── artisan.sh
-└── README.md
+Onfly/
+├── app_backend/              # Backend Laravel (PHP 8.4)
+│   ├── app/
+│   ├── config/
+│   ├── database/
+│   ├── docker-compose.yml
+│   ├── Dockerfile
+│   ├── nginx/nginx.conf
+│   ├── .env
+│   └── ...
+│
+└── app_frontend/             # Frontend Vue 3 + Vite (Node 20)
+    ├── src/
+    ├── public/
+    ├── nginx/nginx.dev.conf
+    ├── docker-compose.yml
+    ├── Dockerfile
+    ├── .env.development
+    └── ...
 ```
 
 ---
 
 ## ⚙️ Requisitos
 
-Antes de começar, garanta que possui instalado:
-
-* [Docker](https://docs.docker.com/get-docker/)
-* [Docker Compose](https://docs.docker.com/compose/)
-* Git
+* [Docker Engine + Compose](https://docs.docker.com/get-docker/)
+* [Git](https://git-scm.com/)
+* Porta **8080**,  **1025**, **5173** e **3306** livres
 
 ---
 
-## 🚧 Configuração Inicial
+## 🧱 Stack utilizada
 
-### 1️⃣ Clonar o repositório
+| Camada       | Tecnologia             | Descrição                                   |
+| ------------ | ---------------------- | ------------------------------------------- |
+| **Backend**  | PHP 8.4 / Laravel 12   | API REST principal                          |
+|              | MySQL 8                | Banco de dados                              |
+|              | Mailhog                | SMTP local para teste de e-mails            |
+|              | Nginx (alpine)         | Servidor web                                |
+| **Frontend** | Node 20 / Vue 3 + Vite | Interface SPA                               |
+|              | Nginx (alpine)         | Proxy + deploy do build                     |
+| **Infra**    | Docker Compose         | Orquestração e rede `app_net` compartilhada |
+
+---
+
+## 🚀 1. Backend — Setup e Execução
+
+### 1️⃣ Clone e entre no projeto
 
 ```bash
 git clone git@github.com:gabriel777assuncao/Onfly---Technical-Test-fullstack-developer.git
 cd app_backend
 ```
 
----
-
-### 2️⃣ Criar o arquivo `.env`
-
-Copie o arquivo de exemplo:
+### 2️⃣ Configure o ambiente
 
 ```bash
 cp .env.example .env
 ```
 
-### Construir e subir os containers
+Verifique os parâmetros do banco e Mailhog:
+
+```env
+DB_HOST=mysql
+DB_DATABASE=sandbox
+DB_USERNAME=sandbox
+DB_PASSWORD=sandbox
+
+MAIL_MAILER=smtp
+MAIL_HOST=mailhog
+MAIL_PORT=1025
+MAIL_FROM_ADDRESS="no-reply@example.test"
+```
+
+### 3️⃣ Suba os containers
 
 ```bash
 docker compose up -d --build
 ```
 
-Verifique se tudo subiu:
+Verifique:
 
 ```bash
 docker ps
 ```
 
-Você deve ver os containers:
+Deve aparecer:
 
-* `app_backend-server-1` (Nginx)
-* `app_backend-php-1` (PHP-FPM)
-* `app_backend-mysql-1` (MySQL)
+```
+app_backend-php-1
+app_backend-mysql-1
+app_backend-mailhog-1
+```
 
----
-
-### 4️⃣ Instalar dependências PHP
+### 4️⃣ Instale dependências
 
 ```bash
 docker compose run --rm composer install
 ```
 
----
-
-### 5️⃣ Gerar chave da aplicação
+### 5️⃣ Gere a chave e rode migrações
 
 ```bash
-docker compose exec php sh  
+docker compose exec php sh
 php artisan key:generate
-```
-
----
-
-### Rodar as migrações do banco
-
-```bash
-docker compose exec php sh  
+php artisan jwt:secret
 php artisan migrate
 ```
 
----
+### 6️⃣ Teste o backend
 
-## 🌐 Acessar o projeto
-
-Abra no navegador:
-👉 [http://localhost:8000](http://localhost:8000)
-
----
-
-## 🧱 Serviços do Docker
-
-| Serviço            | Porta  | Função                   |
-| ------------------ | ------ | ------------------------ |
-| **server** (Nginx) | `8000` | Servidor web             |
-| **php** (PHP-FPM)  | —      | Executa o Laravel        |
-| **mysql**          | `3306` | Banco de dados           |
-| **composer**       | —      | Gerencia dependências    |
-| **artisan**        | —      | Executa comandos Laravel |
-
----
-
-## 💻 Comandos úteis
-
-| Descrição           | Comando                                             |
-|---------------------|-----------------------------------------------------|
-| Subir containers    | `docker compose up -d`                              |
-| Parar containers    | `docker compose down`                               |
-| Rebuild completo    | `docker compose up -d --build`                      |
-| Acessar o bash      | `docker compose exec php sh`                        |
-| Rodar migrations    | `docker compose run --rm artisan migrate`           |
-| Limpar cache        | `docker compose run --rm artisan optimize:clear`    |
-| Instalar pacote PHP | `docker compose run --rm composer require <pacote>` |
-| Ver logs do PHP     | `docker compose logs -f php`                        |
-
----
-
-## 🧰 Estrutura de volumes
-
-| Volume           | Descrição                   |
-| ---------------- | --------------------------- |
-| `dbdata`         | Dados persistentes do MySQL |
-| `vendor`         | Cache das dependências PHP  |
-| `composer_cache` | Cache do Composer           |
-
----
-
-## 🛠️ Configuração do Nginx (`nginx/nginx.conf`)
-
-```nginx
-server {
-    listen 80;
-    index index.php index.html;
-    root /var/www/html/public;
-
-    location / {
-        try_files $uri $uri/ /index.php?$query_string;
-    }
-
-    location ~ \.php$ {
-        fastcgi_pass php:9000;
-        fastcgi_index index.php;
-        include fastcgi_params;
-        fastcgi_param SCRIPT_FILENAME $realpath_root$fastcgi_script_name;
-        fastcgi_param PATH_INFO $fastcgi_path_info;
-    }
-
-    location ~ /\.ht {
-        deny all;
-    }
-}
+```bash
+curl -i http://localhost:8080/api/ping
 ```
+
+✅ Deve retornar:
+
+```json
+{"pong": true}
+```
+
+---
+
+## 💌 Teste de e-mails (Mailhog)
+
+Envie um teste rápido:
+
+```bash
+docker compose exec php sh 
+php artisan tinker
+```
+
+```php
+Mail::raw('Teste de e-mail local', function ($m) {
+  $m->to('dev@example.test')->subject('Mailhog funcionando!');
+});
+exit
+```
+
+Acesse [http://localhost:8025](http://localhost:8025) e veja o e-mail recebido.
+
+---
+
+## 🧩 2. Frontend — Setup e Execução
+
+### 1️⃣ Vá para o diretório do frontend
+
+```bash
+cd ../app_frontend
+```
+
+### 2️⃣ Configure o ambiente dev
+
+```bash
+cp .env.example .env.development
+```
+
+Defina a API:
+
+```env
+VITE_API_BASE_URL=http://localhost:8080
+```
+
+### 3️⃣ Suba o ambiente de desenvolvimento
+
+```bash
+docker compose up -d --build frontend-dev
+```
+
+Acesse: [http://localhost:5173](http://localhost:5173)
+
+### 4️⃣ Suba o ambiente integrado (com Nginx)
+
+```bash
+docker compose up -d --build web
+```
+
+Acesse: [http://localhost:8080](http://localhost:8080)
+
+O frontend estará servindo o build do Vite, e o Nginx rotearà `/api` para o backend Laravel via `fastcgi_pass`.
+
+---
+
+## 🌐 Rede compartilhada `app_net`
+
+Tanto o backend quanto o frontend utilizam a mesma rede Docker para comunicação interna:
+
+```yaml
+networks:
+  app_net:
+    name: app_net
+    driver: bridge
+```
+
+Isso permite que o frontend acesse o backend por `http://php:9000` (internamente) e o Nginx resolva `/api` corretamente.
+
+---
+
+## 🔧 Comandos úteis
+
+| Ação                   | Backend                                                   | Frontend                                            |
+| ---------------------- |-----------------------------------------------------------| --------------------------------------------------- |
+| Subir containers       | `docker compose up -d`                                    | `docker compose up -d`                              |
+| Rebuild completo       | `docker compose up -d --build`                            | `docker compose up -d --build`                      |
+| Parar containers       | `docker compose down`                                     | `docker compose down`                               |
+| Acessar shell          | `docker compose exec php sh`                              | `docker compose exec frontend-dev sh`               |
+| Limpar cache           | `docker compose exec php sh -> php artisan optimize:clear`| —                                                   |
+| Rodar testes unitários | `docker compose exec php sh -> php artisan test`          | `docker compose run --rm frontend-dev npm run test` |
+
+---
+
+## 🧭 Diagnóstico rápido
+
+| Verificação            | Comando                                  | Resultado esperado |             |
+| ---------------------- | ---------------------------------------- | ------------------ | ----------- |
+| Laravel responde       | `curl -i http://localhost:8000/api/ping` | `{"pong":true}`    |             |
+| Nginx + front roteando | `curl -i http://localhost:8080/api/ping` | `{"pong":true}`    |             |
+| Mailhog SMTP ativo     | `docker compose ps                       | grep mailhog`      | Status “Up” |
+| E-mails visíveis       | Abrir `http://localhost:8025`            | Interface Mailhog  |             |
+
+---
 
 ## 🧑‍💻 Autor
 
 **Gabriel Costa**
-📍 Betim - MG
+📍 Betim – MG
 💼 Fullstack Developer — PHP / Laravel / Docker / Vue.js / Typescript
 📧 [gabrielassuncaocosta2@gmail.com](mailto:gabrielassuncaocosta2@gmail.com)
 
