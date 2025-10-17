@@ -3,6 +3,11 @@
 use App\Http\Controllers\Auth\AuthController;
 use App\Http\Controllers\Travel\TravelOrderController;
 use Illuminate\Support\Facades\Route;
+use Illuminate\Http\{JsonResponse, Request};
+
+Route::get('ping', function (): JsonResponse {
+    return response()->json('pong');
+});
 
 Route::prefix('auth')->controller(AuthController::class)->group(function () {
     Route::post('register', 'register');
@@ -18,7 +23,7 @@ Route::prefix('auth')->controller(AuthController::class)->group(function () {
 Route::middleware('auth:api')
     ->prefix('travel-orders')
     ->controller(TravelOrderController::class)
-    ->group(function () {
+    ->group(function (): void {
         Route::post('/', 'store');
         Route::get('/', 'index');
         Route::get('{travel_order}', 'show');
