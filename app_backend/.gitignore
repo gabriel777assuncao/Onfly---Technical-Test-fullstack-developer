@@ -10,7 +10,7 @@
 !/storage/logs/
 /storage/app/*
 !/storage/app/**/.gitignore
-/storage/framework/*
+/storage/framework/
 !/storage/framework/**/.gitignore
 /storage/logs/*
 !/storage/logs/.gitignore
