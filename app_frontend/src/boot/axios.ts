@@ -45,6 +45,7 @@ export default boot(({ router, store }): void => {
 
       if (!isRefreshingToken) {
         isRefreshingToken = true;
+
         try {
           await authStore.refreshTokens();
           originalRequest.__retried = true;

@@ -14,6 +14,7 @@ export class DomainError extends Error {
     super(message);
     this.name = 'DomainError';
     this.code = code;
+
     if (fields !== undefined) {
       this.fields = fields;
     }
