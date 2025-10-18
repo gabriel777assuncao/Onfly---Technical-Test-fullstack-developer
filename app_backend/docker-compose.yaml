@@ -53,20 +53,6 @@ services:
     entrypoint: ["composer","--ignore-platform-reqs"]
     networks: [app_net]
 
-  artisan:
-    build:
-      context: .
-      dockerfile: Dockerfile
-    working_dir: /var/www/html
-    depends_on:
-      mysql:
-        condition: service_healthy
-    volumes:
-      - .:/var/www/html
-      - vendor:/var/www/html/vendor
-    entrypoint: ["php","/var/www/html/artisan"]
-    networks: [app_net]
-
   mailhog:
     image: mailhog/mailhog
     ports:
