@@ -1,7 +1,7 @@
 <template>
   <q-card flat bordered class="q-pa-md">
     <div class="row items-center justify-between q-mb-md">
-      <div class="text-subtitle1">Visão Geral</div>
+      <div class="text-subtitle1">{{ title }}</div>
       <q-badge outline color="grey-7" :label="totalLabel" />
     </div>
 
@@ -15,8 +15,18 @@
           </div>
 
           <div v-else class="chart-box">
-            <Doughnut v-if="hasDoughnutData" :data="doughnutData" :options="doughnutOptions" />
+            <Doughnut
+              v-if="hasDoughnutData"
+              :data="doughnutData"
+              :options="doughnutOptions"
+              aria-label="Gráfico de pizza com a distribuição dos pedidos por status"
+              role="img"
+            />
             <div v-else class="text-grey-6 text-caption">Sem dados para exibir.</div>
+
+            <span class="sr-only">
+              {{ donutA11yDescription }}
+            </span>
           </div>
         </q-card>
       </div>
@@ -30,8 +40,18 @@
           </div>
 
           <div v-else class="chart-box">
-            <Line v-if="hasLineData" :data="lineData" :options="lineOptions" />
+            <Line
+              v-if="hasLineData"
+              :data="lineData"
+              :options="lineOptions"
+              aria-label="Gráfico de linha com a quantidade de pedidos por mês"
+              role="img"
+            />
             <div v-else class="text-grey-6 text-caption">Sem dados para exibir.</div>
+
+            <span class="sr-only">
+              {{ lineA11yDescription }}
+            </span>
           </div>
         </q-card>
       </div>
@@ -67,9 +87,27 @@ export interface ITravelOrder {
   created_at: string;
 }
 
+interface IStatusCount {
+  requested: number;
+  approved: number;
+  canceled: number;
+}
+
+interface IMonthBuckets {
+  keys: string[];
+  labels: string[];
+}
+
+interface IMonthlyAggregation {
+  labels: string[];
+  data: number[];
+}
+
 const props = defineProps({
   orders: { type: Array as PropType<ITravelOrder[]>, required: true },
   isLoading: { type: Boolean, default: false },
+  monthsWindow: { type: Number, default: 6 },
+  title: { type: String, default: 'Visão Geral' },
 });
 
 const COLOR_STATUS_REQUESTED = '#42A5F5';
@@ -83,20 +121,19 @@ const STATUS_LABEL_BY_CODE: Record<ITravelOrder['status'], string> = {
   canceled: 'Cancelado',
 };
 
-type TStatusCount = Record<ITravelOrder['status'], number>;
-type TMonthBuckets = { keys: string[]; labels: string[] };
-type TMonthlyAggregation = { labels: string[]; data: number[] };
+function getMonthKey(date: Date): string {
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+}
 
-function countOrdersByStatus(orders: ITravelOrder[]): TStatusCount {
-  return orders.reduce<TStatusCount>((accumulator, order) => {
+function countOrdersByStatus(orders: ITravelOrder[]): IStatusCount {
+  return orders.reduce<IStatusCount>((accumulator, order) => {
     accumulator[order.status] = (accumulator[order.status] ?? 0) + 1;
     return accumulator;
   }, { requested: 0, approved: 0, canceled: 0 });
 }
 
-function buildRecentMonthBuckets(totalMonths: number): TMonthBuckets {
+function buildRecentMonthBuckets(totalMonths: number): IMonthBuckets {
   const today = new Date();
-
   const indexes = Array.from({ length: totalMonths }, (_, i) => totalMonths - 1 - i);
 
   const keys: string[] = [];
@@ -104,7 +141,7 @@ function buildRecentMonthBuckets(totalMonths: number): TMonthBuckets {
 
   indexes.forEach((offset) => {
     const date = new Date(today.getFullYear(), today.getMonth() - offset, 1);
-    const key = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+    const key = getMonthKey(date);
     const label = date.toLocaleDateString('pt-BR', { month: 'short', year: '2-digit' });
     keys.push(key);
     labels.push(label);
@@ -113,14 +150,16 @@ function buildRecentMonthBuckets(totalMonths: number): TMonthBuckets {
   return { keys, labels };
 }
 
-function aggregateOrdersByMonth(orders: ITravelOrder[], lastMonths = 6): TMonthlyAggregation {
+function aggregateOrdersByMonth(orders: ITravelOrder[], lastMonths: number): IMonthlyAggregation {
   const { keys, labels } = buildRecentMonthBuckets(lastMonths);
   const accumulator = new Map<string, number>(keys.map((k) => [k, 0]));
 
   orders.forEach((order) => {
-    const createdAt = new Date(order.created_at);
-    const monthKey = `${createdAt.getFullYear()}-${String(createdAt.getMonth() + 1).padStart(2, '0')}`;
-    if (!accumulator.has(monthKey)) return;
+    const monthKey = getMonthKey(new Date(order.created_at));
+
+    if (!accumulator.has(monthKey)) {
+      return;
+    }
     accumulator.set(monthKey, (accumulator.get(monthKey) ?? 0) + 1);
   });
 
@@ -136,6 +175,7 @@ function coerceToNumber(value: unknown): number {
   return Number.isFinite(numeric) ? numeric : 0;
 }
 
+/** ===== Plugin: total no centro do donut ===== */
 const doughnutCenterTotalPlugin: Plugin<'doughnut'> = {
   id: 'centerTotal',
   afterDraw(chart): void {
@@ -165,6 +205,7 @@ const totalLabel = computed<string>(() => `${props.orders.length} pedido(s)`);
 
 const doughnutData = computed<ChartData<'doughnut'>>(() => {
   const counts = countOrdersByStatus(props.orders);
+
   return {
     labels: [STATUS_LABEL_BY_CODE.requested, STATUS_LABEL_BY_CODE.approved, STATUS_LABEL_BY_CODE.canceled],
     datasets: [
@@ -189,7 +230,8 @@ const doughnutOptions = {
 } satisfies ChartOptions<'doughnut'>;
 
 const lineData = computed<ChartData<'line'>>(() => {
-  const monthly = aggregateOrdersByMonth(props.orders, 6);
+  const monthly = aggregateOrdersByMonth(props.orders, props.monthsWindow);
+
   return {
     labels: monthly.labels,
     datasets: [
@@ -214,7 +256,33 @@ const lineOptions = {
   scales: { y: { beginAtZero: true, ticks: { precision: 0 } } },
   plugins: { legend: { display: false }, tooltip: { enabled: true } },
 } satisfies ChartOptions<'line'>;
+
+const donutA11yDescription = computed<string>(() => {
+  const c = countOrdersByStatus(props.orders);
+
+  return `Total de ${props.orders.length} pedidos: ${c.requested} solicitados, ${c.approved} aprovados e ${c.canceled} cancelados.`;
+});
+
+const lineA11yDescription = computed<string>(() => {
+  const monthly = aggregateOrdersByMonth(props.orders, props.monthsWindow);
+  const points = monthly.labels.map((label, i) => `${label}: ${monthly.data[i]}`).join('; ');
+  return `Série temporal de pedidos nos últimos ${props.monthsWindow} meses. ${points}.`;
+});
 </script>
+
 <style scoped>
 .chart-box { height: 220px; }
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  border: 0;
+  padding: 0;
+  white-space: nowrap;
+  clip-path: inset(50%);
+  clip: rect(0 0 0 0);
+  overflow: hidden;
+}
 </style>
