@@ -19,6 +19,7 @@ const routes = [
     ],
   },
   { path: '/:catchAll(.*)*', redirect: '/login' },
+  { path: '/landing', component: () => import('pages/LandingPage.vue') }, // pública
 ]
 
 export default route(() => {
