@@ -18,14 +18,14 @@
 </template>
 
 <script setup lang="ts">
-import TravelOrdersInsights from 'src/components/TravelOrdersInsights.vue'
-import TravelOrdersTable from 'src/components/TravelOrdersTable.vue'
-import { useTravelOrders } from 'src/composables/travel/useTravelOrders'
-import { useAuthStore } from 'src/stores/auth'
-import { computed } from 'vue'
+import TravelOrdersInsights from 'src/components/TravelOrdersInsights.vue';
+import TravelOrdersTable from 'src/components/TravelOrdersTable.vue';
+import { useTravelOrders } from 'src/composables/travel/useTravelOrders';
+import { useAuthStore } from 'src/stores/auth';
+import { computed } from 'vue';
 
-const auth = useAuthStore()
-const isAdmin = computed(() => auth.isAdmin)
+const auth = useAuthStore();
+const isAdmin = computed(() => auth.isAdmin);
 
 const {
   travelOrders,

@@ -146,13 +146,15 @@ async function onTableRequest(payload: ITableRequestPayload): Promise<void> {
 
 function confirmStatusUpdate(travelOrder: ITravelOrder, nextStatus: 'approved' | 'canceled'): void {
   const actionText = nextStatus === 'approved' ? 'aprovar' : 'cancelar';
+
   Dialog.create({
     title: 'Confirmar ação',
     message: `Tem certeza que deseja ${actionText} este pedido?`,
     cancel: true,
     persistent: true,
-  }).onOk(async () => {
-    await applyStatusUpdate(travelOrder.id, nextStatus);
+  }).onOk(() => {
+    applyStatusUpdate(travelOrder.id, nextStatus)
+      .catch(error => console.error('Erro ao atualizar status:', error));
   });
 }
 
