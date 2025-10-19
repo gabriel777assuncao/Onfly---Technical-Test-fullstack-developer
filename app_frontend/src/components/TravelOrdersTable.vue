@@ -98,6 +98,13 @@ const statusOptions = [
 
 const columns: QTableColumn[] = [
   { name: 'id', field: 'id', label: 'ID', align: 'left', sortable: true },
+  {
+    name: 'requester_name',
+    field: (row: ITravelOrder) => row.requester_name ?? row.user?.name ?? '—',
+    label: 'Solicitante',
+    align: 'left',
+    sortable: true,
+  },
   { name: 'destination', field: 'destination', label: 'Destino', align: 'left', sortable: true },
   { name: 'departure_date', field: 'departure_date', label: 'Ida', align: 'left', sortable: true },
   { name: 'return_date', field: 'return_date', label: 'Volta', align: 'left', sortable: true },
