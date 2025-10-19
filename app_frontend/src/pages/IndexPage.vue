@@ -9,9 +9,22 @@
 
 <script setup lang="ts">
 import { useRouter } from 'vue-router'
+import { ref } from 'vue'
 
 const router = useRouter()
-function goLogin() {
-  void router.push('/login')
+const isLoading = ref(false)
+
+async function goLogin() {
+  try {
+    isLoading.value = true
+
+    await new Promise(resolve => setTimeout(resolve, 1000))
+
+    await router.push('/login')
+  } catch (error) {
+    console.error('Erro ao navegar para login:', error)
+  } finally {
+    isLoading.value = false
+  }
 }
 </script>

@@ -13,16 +13,19 @@ type RetriableRequestConfig = InternalAxiosRequestConfig & { __retried?: boolean
 export default boot(({ router, store }): void => {
   const authStore = useAuthStore(store);
 
+  async function handleUnauthorized(): Promise<void> {
+    await authStore.logoutUser();
+    if (router.currentRoute.value.path !== '/login') {
+      await router.push('/login');
+    }
+  }
+
   api.interceptors.request.use((requestConfig: InternalAxiosRequestConfig): InternalAxiosRequestConfig => {
     const accessToken = authStore.token;
-
-    if (!accessToken) {
-      return requestConfig;
+    if (accessToken) {
+      requestConfig.headers = requestConfig.headers ?? {};
+      (requestConfig.headers as Record<string, string>).Authorization = `Bearer ${accessToken}`;
     }
-
-    requestConfig.headers = requestConfig.headers ?? {};
-    (requestConfig.headers as Record<string, string>).Authorization = `Bearer ${accessToken}`;
-
     return requestConfig;
   });
 
@@ -34,27 +37,23 @@ export default boot(({ router, store }): void => {
       const statusCode = axiosError.response?.status;
       const originalRequest = axiosError.config as RetriableRequestConfig | undefined;
 
-      if (statusCode !== 401 || !originalRequest || originalRequest.__retried) {
-        if (statusCode === 401) {
-          await authStore.logoutUser();
-          await router.push('/login');
-        }
-
+      if (statusCode !== 401) {
         return Promise.reject(axiosError instanceof Error ? axiosError : new Error('Request failed'));
+      }
+
+      if (!originalRequest || originalRequest.__retried) {
+        await handleUnauthorized();
+        return Promise.reject(axiosError instanceof Error ? axiosError : new Error('Unauthorized'));
       }
 
       if (!isRefreshingToken) {
         isRefreshingToken = true;
-
         try {
           await authStore.refreshTokens();
           originalRequest.__retried = true;
-
           return api.request(originalRequest);
         } catch (refreshError) {
-          await authStore.logoutUser();
-          await router.push('/login');
-
+          await handleUnauthorized();
           return Promise.reject(refreshError instanceof Error ? refreshError : new Error('Unauthorized'));
         } finally {
           isRefreshingToken = false;

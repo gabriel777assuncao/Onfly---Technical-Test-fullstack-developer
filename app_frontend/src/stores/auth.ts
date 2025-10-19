@@ -1,102 +1,106 @@
-import { defineStore } from 'pinia'
+import { defineStore } from 'pinia';
 import {
   login as loginApi,
   logout as logoutApi,
   me as meApi,
   refresh as refreshApi,
   register as registerApi,
-  type User,
-  type RegisterPayload,
-} from 'src/services/auth'
-import { mapHttpToDomainError } from 'src/domain/errors'
+  type IUser,
+  type IRegisterPayload,
+} from 'src/services/auth';
+import { mapHttpToDomainError } from 'src/domain/errors';
 
-type AuthTokens = {
-  token: string
-  expires_at: string | null
+interface IAuthTokens {
+  token: string;
+  expires_at: string | null;
 }
 
-type AuthState = {
-  user: User | null
-  token: string | null
-  expiresAt: string | null
+interface IAuthState {
+  user: IUser | null;
+  token: string | null;
+  expiresAt: string | null;
 }
 
-const TOKEN_KEY = 'token'
-const EXPIRES_AT_KEY = 'expires_at'
+interface ILoginPayload {
+  email: string;
+  password: string;
+}
+
+const TOKEN_KEY = 'token';
+const EXPIRES_AT_KEY = 'expires_at';
 
 export const useAuthStore = defineStore('auth', {
-  state: (): AuthState => ({
+  state: (): IAuthState => ({
     user: null,
     token: localStorage.getItem(TOKEN_KEY),
     expiresAt: localStorage.getItem(EXPIRES_AT_KEY),
   }),
 
   getters: {
-    isAuthenticated: (s): boolean => !!s.token,
-    isAdmin: (s): boolean => !!s.user?.is_admin,
+    isAuthenticated: (state): boolean => !!state.token,
+    isAdmin: (state): boolean => !!state.user?.is_admin,
   },
 
   actions: {
     applyTokens(token: string | null, expiresAt?: string | null): void {
-      this.token = token
-      this.expiresAt = expiresAt ?? null
+      this.token = token;
+      this.expiresAt = expiresAt ?? null;
 
       if (!token) {
-        localStorage.removeItem(TOKEN_KEY)
-        localStorage.removeItem(EXPIRES_AT_KEY)
-        return
+        localStorage.removeItem(TOKEN_KEY);
+        localStorage.removeItem(EXPIRES_AT_KEY);
+        return;
       }
+      localStorage.setItem(TOKEN_KEY, token);
 
       if (expiresAt) {
-        localStorage.setItem(EXPIRES_AT_KEY, expiresAt)
+        localStorage.setItem(EXPIRES_AT_KEY, expiresAt);
       } else {
-        localStorage.removeItem(EXPIRES_AT_KEY)
+        localStorage.removeItem(EXPIRES_AT_KEY);
       }
     },
 
-    async registerAccount(payload: RegisterPayload): Promise<void> {
+    async registerAccount(payload: IRegisterPayload): Promise<void> {
       try {
-        await registerApi(payload)
+        await registerApi(payload);
         await this.loginWithCredentials({
           email: payload.email,
           password: payload.password,
-        })
+        });
       } catch (error: unknown) {
-        throw mapHttpToDomainError(error)
+        throw mapHttpToDomainError(error);
       }
     },
 
-    async loginWithCredentials(payload: { email: string; password: string }): Promise<void> {
+    async loginWithCredentials(payload: ILoginPayload): Promise<void> {
       try {
-        const { token, expires_at }: AuthTokens = await loginApi(payload)
-        this.applyTokens(token, expires_at)
-        this.user = await meApi()
+        const { token, expires_at }: IAuthTokens = await loginApi(payload);
+        this.applyTokens(token, expires_at);
+        this.user = await meApi();
       } catch (error: unknown) {
-        this.applyTokens(null)
-        throw mapHttpToDomainError(error)
+        this.applyTokens(null);
+        throw mapHttpToDomainError(error);
       }
     },
 
     async logoutUser(): Promise<void> {
       try {
-        await logoutApi()
-      } catch (error) {
-        console.debug('logout ignored', error)
+        await logoutApi();
       } finally {
-        this.user = null
-        this.applyTokens(null)
+        this.user = null;
+        this.applyTokens(null);
       }
     },
 
     async refreshTokens(): Promise<void> {
       try {
-        const { token, expires_at }: AuthTokens = await refreshApi()
-        this.applyTokens(token, expires_at)
+        const { token, expires_at }: IAuthTokens = await refreshApi();
+        this.applyTokens(token, expires_at);
       } catch (error: unknown) {
-        this.user = null
-        this.applyTokens(null)
-        throw mapHttpToDomainError(error)
+        this.user = null;
+        this.applyTokens(null);
+        throw mapHttpToDomainError(error);
       }
     },
   },
-})
+});
