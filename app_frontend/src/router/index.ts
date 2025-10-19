@@ -48,7 +48,7 @@ export default route(function ({ store }) {
     const hasToken  = Boolean(auth.token);
 
     if (isPublic && hasToken) {
-      const redirect = (to.query.redirect as string) || '/app';
+      const redirect = (to.query.redirect as string) || '/';
       return { path: redirect };
     }
 
