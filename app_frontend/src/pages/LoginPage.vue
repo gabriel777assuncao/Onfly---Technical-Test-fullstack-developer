@@ -108,34 +108,30 @@ const passwordValidationRules = [requiredFieldRule];
 const canSubmitForm = computed<boolean>(() => {
   return !isSubmittingRequest.value && !!emailAddress.value && !!userPassword.value;
 });
-
 function togglePasswordVisibility(): void {
   isShowingPassword.value = !isShowingPassword.value;
 }
 
 async function submitLogin(): Promise<void> {
-  const isFormValid = await formReference.value?.validate();
-  if (!isFormValid) {
-    return;
-  }
-  if (!canSubmitForm.value) {
-    return;
-  }
   isSubmittingRequest.value = true;
   Loading.show();
+
   try {
     await authenticationStore.loginWithCredentials({
       email: emailAddress.value.trim(),
       password: userPassword.value,
     });
+
     Notify.create({
       type: 'positive',
       message: 'Bem-vindo!',
       position: 'top-right',
     });
+
     await router.push('/');
   } catch (error) {
     const domainError = error as DomainError;
+
     notifyError(domainError);
     pickFieldToFocus(domainError);
   } finally {
@@ -144,9 +140,10 @@ async function submitLogin(): Promise<void> {
   }
 }
 
-function goToRegister(): void {
-  void router.push('/register');
+async function goToRegister(): Promise<void> {
+    await router.push('/register');
 }
+
 </script>
 
 <style scoped>

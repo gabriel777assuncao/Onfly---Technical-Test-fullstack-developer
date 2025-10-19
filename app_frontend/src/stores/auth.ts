@@ -102,5 +102,16 @@ export const useAuthStore = defineStore('auth', {
         throw mapHttpToDomainError(error);
       }
     },
+
+    async fetchUser(): Promise<void> {
+      try {
+        this.user = await meApi();
+      } catch (error: unknown) {
+        this.user = null;
+        this.applyTokens(null);
+
+        throw mapHttpToDomainError(error);
+      }
+    },
   },
 });
