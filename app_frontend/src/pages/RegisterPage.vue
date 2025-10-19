@@ -266,8 +266,8 @@ function setPasswordConfirmationVisibilityWhilePressing(value: boolean): void {
   isShowingPasswordConfirmation.value = value;
 }
 
-function goToLogin(): void {
-  void router.push('/login');
+async function goToLogin(): Promise<void> {
+  await router.push('/login');
 }
 
 const formActions = {
@@ -278,6 +278,7 @@ const formActions = {
   setPasswordVisibilityWhilePressing,
   setPasswordConfirmationVisibilityWhilePressing,
 };
+
 </script>
 
 <style scoped>

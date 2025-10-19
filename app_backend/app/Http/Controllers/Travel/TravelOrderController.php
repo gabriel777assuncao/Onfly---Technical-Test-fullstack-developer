@@ -57,7 +57,7 @@ class TravelOrderController extends Controller
 
         return response()->json(
             TravelOrderResource::collection($paginator)->response()->getData(true),
-            Response::HTTP_OK
+            Response::HTTP_OK,
         );
     }
 
