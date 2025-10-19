@@ -220,7 +220,7 @@ async function goToRegister(): Promise<void> {
 }
 
 async function goToDashboard(): Promise<void> {
-  await router.push('/');
+  await router.push('/app');
 }
 
 async function logout(): Promise<void> {

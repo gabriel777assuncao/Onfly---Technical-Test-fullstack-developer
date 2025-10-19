@@ -34,7 +34,7 @@ const authStore = useAuthStore();
 const { isAuthenticated } = storeToRefs(authStore);
 
 async function goHome(): Promise<void> {
-  await router.push('/landing');
+  await router.push('/');
 }
 
 async function goLogin(): Promise<void> {
@@ -46,12 +46,12 @@ async function goRegister(): Promise<void> {
 }
 
 async function goDashboard(): Promise<void> {
-  await router.push('/');
+  await router.push('/app');
 }
 
 async function logout(): Promise<void> {
   await authStore.logoutUser();
-  await router.push('/landing');
+  await router.push('/');
 }
 
 function scrollTo(id: string): void {

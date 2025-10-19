@@ -17,7 +17,11 @@ export default route(function ({ store }) {
         component: () => import('layouts/AuthLayout.vue'),
         meta: { public: true },
         children: [
-          { path: '', name: 'login', component: () => import('pages/LoginPage.vue') },
+          {
+            path: '',
+            name: 'login',
+            component: () => import('pages/LoginPage.vue'),
+          },
         ],
       },
       {
@@ -25,7 +29,11 @@ export default route(function ({ store }) {
         component: () => import('layouts/AuthLayout.vue'),
         meta: { public: true },
         children: [
-          { path: '', name: 'register', component: () => import('pages/RegisterPage.vue') },
+          {
+            path: '',
+            name: 'register',
+            component: () => import('pages/RegisterPage.vue'),
+          },
         ],
       },
       {
@@ -33,7 +41,11 @@ export default route(function ({ store }) {
         component: () => import('layouts/MainLayout.vue'),
         meta: { requiresAuth: true },
         children: [
-          { path: '', name: 'dashboard', component: () => import('pages/DashboardPage.vue') },
+          {
+            path: '',
+            name: 'dashboard',
+            component: () => import('pages/DashboardPage.vue'),
+          },
         ],
       },
       { path: '/:catchAll(.*)*', redirect: { name: 'home' } },
@@ -43,17 +55,20 @@ export default route(function ({ store }) {
   Router.beforeEach(async (to: RouteLocationNormalized) => {
     const auth = useAuthStore(store);
 
-    const isPublic  = Boolean(to.meta.public);
     const needsAuth = Boolean(to.meta.requiresAuth);
-    const hasToken  = Boolean(auth.token);
-
-    if (isPublic && hasToken) {
-      const redirect = (to.query.redirect as string) || '/';
-      return { path: redirect };
-    }
+    const isGuestOnly = to.name === 'login' || to.name === 'register';
+    const hasToken = Boolean(auth.token);
 
     if (needsAuth && !hasToken) {
       return { name: 'login', query: { redirect: to.fullPath } };
+    }
+
+    if (hasToken && isGuestOnly) {
+      const target = (to.query.redirect as string) || '/app';
+      if (target === to.fullPath) {
+        return true;
+      };
+      return { path: target };
     }
 
     if (hasToken && !auth.user) {
@@ -61,6 +76,7 @@ export default route(function ({ store }) {
         await auth.fetchUser?.();
       } catch {
         await auth.logoutUser?.();
+
         return { name: 'login', query: { redirect: to.fullPath } };
       }
     }
