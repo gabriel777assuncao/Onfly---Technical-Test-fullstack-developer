@@ -8,13 +8,22 @@
           <h1 class="hero-title">
             Viagens corporativas com leveza e controle. Bem-vindo à <span class="highlight">Onfly</span>.
           </h1>
+
           <p class="hero-subtitle">
             Centralize pedidos, aprovações e notificações em um só lugar. Tenha visibilidade do que acontece e tranquilidade para focar no que importa.
           </p>
+
           <div class="row q-gutter-sm q-mt-md">
-            <q-btn color="primary" unelevated size="lg" label="Começar agora" @click="goToRegister" />
-            <q-btn flat color="primary" size="lg" label="Entrar" @click="goToLogin" />
+            <template v-if="isAuthenticated">
+              <q-btn color="primary" unelevated size="lg" label="Ir para o dashboard" @click="goToDashboard" />
+              <q-btn flat color="primary" size="lg" label="Sair" @click="logout" />
+            </template>
+            <template v-else>
+              <q-btn color="primary" unelevated size="lg" label="Começar agora" @click="goToRegister" />
+              <q-btn flat color="primary" size="lg" label="Entrar" @click="goToLogin" />
+            </template>
           </div>
+
           <div class="row q-col-gutter-md q-mt-lg">
             <div class="col-12 col-sm-4">
               <div class="pill">
@@ -70,7 +79,7 @@
       </div>
     </section>
 
-    <section class="container q-my-xl">
+    <section id="about" class="container q-my-xl">
       <div class="text-h5 text-center q-mb-lg">Por que escolher a Onfly?</div>
       <div class="row q-col-gutter-lg">
         <q-card flat bordered class="col-12 col-md-4 card">
@@ -140,7 +149,7 @@
       </div>
     </section>
 
-    <section class="container q-my-xl">
+    <section id="contact" class="container q-my-xl">
       <div class="text-h5 text-center q-mb-lg">Quem usa, recomenda</div>
       <div class="row q-col-gutter-lg">
         <q-card flat bordered class="col-12 col-md-6">
@@ -168,27 +177,38 @@
       <div class="container text-center">
         <div class="text-h5 q-mb-sm">Pronto para uma gestão mais humana e eficiente?</div>
         <div class="text-body2 text-grey-7 q-mb-md">
-          Crie sua conta e experimente a Onfly. Você cuida das pessoas, a gente cuida do fluxo.
+          Experimente a Onfly. Você cuida das pessoas, a gente cuida do fluxo.
         </div>
+
         <div class="row justify-center q-gutter-sm">
-          <q-btn color="primary" size="lg" unelevated label="Criar conta" @click="goToRegister" />
-          <q-btn flat color="primary" size="lg" label="Entrar" @click="goToLogin" />
+          <template v-if="isAuthenticated">
+            <q-btn color="primary" size="lg" unelevated label="Ir para o dashboard" @click="goToDashboard" />
+            <q-btn flat color="primary" size="lg" label="Sair" @click="logout" />
+          </template>
+          <template v-else>
+            <q-btn color="primary" size="lg" unelevated label="Criar conta" @click="goToRegister" />
+            <q-btn flat color="primary" size="lg" label="Entrar" @click="goToLogin" />
+          </template>
         </div>
       </div>
     </section>
 
-    <TheTheFooter/>
+    <TheFooter />
   </div>
 </template>
 
 <script setup lang="ts">
 import { ref } from 'vue';
 import { useRouter } from 'vue-router';
+import { storeToRefs } from 'pinia';
 import TheHeader from 'src/components/TheHeader.vue';
-import TheTheFooter from 'components/TheFooter.vue';
+import TheFooter from 'src/components/TheFooter.vue';
+import { useAuthStore } from 'src/stores/auth';
 
 const router = useRouter();
 const carouselSlide = ref<'s1' | 's2' | 's3'>('s1');
+const authStore = useAuthStore();
+const { isAuthenticated } = storeToRefs(authStore);
 
 async function goToLogin(): Promise<void> {
   await router.push('/login');
@@ -198,6 +218,14 @@ async function goToRegister(): Promise<void> {
   await router.push('/register');
 }
 
+async function goToDashboard(): Promise<void> {
+  await router.push('/');
+}
+
+async function logout(): Promise<void> {
+  await authStore.logoutUser();
+  await router.push('/login');
+}
 </script>
 
 <style scoped>
@@ -213,11 +241,6 @@ async function goToRegister(): Promise<void> {
   margin: 0 auto;
   padding-left: 16px;
   padding-right: 16px;
-}
-
-.brand {
-  color: #1e88e5;
-  letter-spacing: .2px;
 }
 
 .hero {
