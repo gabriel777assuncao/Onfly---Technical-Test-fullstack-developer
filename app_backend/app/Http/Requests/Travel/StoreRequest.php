@@ -11,8 +11,8 @@ class StoreRequest extends FormRequest
         return [
             'requester_name' => ['required', 'string', 'max:255'],
             'destination' => ['required', 'string', 'max:255'],
-            'departure_date' => ['required', 'date', 'after_or_equal:today'],
-            'return_date' => ['required', 'date', 'after:departure_date'],
+            'departure_date' => ['required','date','date_format:Y-m-d','after_or_equal:today'],
+            'return_date'    => ['required','date','date_format:Y-m-d','after:departure_date'],
             'status' => ['prohibited'],
         ];
     }

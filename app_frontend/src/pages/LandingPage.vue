@@ -193,8 +193,8 @@
 import { ref } from 'vue';
 import { useRouter } from 'vue-router';
 import { storeToRefs } from 'pinia';
-import TheHeader from 'src/components/TheHeader.vue';
-import TheFooter from 'src/components/TheFooter.vue';
+import TheHeader from 'components/basics/TheHeader.vue';
+import TheFooter from 'components/basics/TheFooter.vue';
 import { useAuthStore } from 'src/stores/auth';
 import slide1 from 'src/assets/pexels-olly-838413.jpg';
 import slide2 from 'src/assets/pexels-pixabay-46148.jpg';

@@ -11,8 +11,8 @@
 </template>
 
 <script setup lang="ts">
-import TheFooter from 'src/components/TheFooter.vue';
-import TheHeader from "components/TheHeader.vue";
+import TheFooter from 'components/basics/TheFooter.vue';
+import TheHeader from "components/basics/TheHeader.vue";
 </script>
 
 <style scoped>

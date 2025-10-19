@@ -170,10 +170,10 @@ import { computed, reactive, ref } from 'vue';
 import { useRouter } from 'vue-router';
 import { useAuthStore } from 'src/stores/auth';
 import { Notify, Loading, type QForm } from 'quasar';
-import { useNotifyError } from 'src/composables/useNotifyError';
+import { useNotifyError } from 'src/composables/errors/useNotifyError';
 import { pickFieldToFocus } from 'src/ui/errorMessages';
 import type { DomainError } from 'src/domain/errors';
-import AuthShell from 'src/components/AuthShell.vue';
+import AuthShell from 'components/auth/AuthShell.vue';
 import { useRegisterValidation } from 'src/services/RegisterValidation';
 
 const router = useRouter();

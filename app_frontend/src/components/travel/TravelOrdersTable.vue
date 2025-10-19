@@ -14,6 +14,8 @@
       />
       <q-btn :loading="isLoading" label="Atualizar" color="primary" @click="onRefresh" />
       <q-btn flat label="Limpar filtros" color="grey-8" @click="onReset" />
+      <q-space />
+      <q-btn color="primary" icon="add" label="Novo pedido" @click="showCreate = true" />
     </div>
 
     <q-table
@@ -61,18 +63,26 @@
         </q-td>
       </template>
     </q-table>
+
+    <CreateTravelOrderModal
+      v-model="showCreate"
+      :preset-requester-name="auth.user?.name ?? null"
+      @created="onCreatedOrder"
+    />
   </div>
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue';
+import { ref, computed } from 'vue';
 import type { QTableColumn } from 'quasar';
 import { Notify, Dialog } from 'quasar';
-import { useAuthStore } from 'src/stores/auth';
+import { useAuthStore } from 'stores/auth';
 import { useTravelOrders, type ITravelOrder, type ITableRequestPayload } from 'src/composables/travel/useTravelOrders';
+import CreateTravelOrderModal from 'components/travel/CreateTravelOrderForm.vue';
 
 const auth = useAuthStore();
 const isAdministrator = computed<boolean>(() => auth.isAdmin);
+const showCreate = ref<boolean>(false);
 
 const {
   travelOrders,
@@ -98,13 +108,7 @@ const statusOptions = [
 
 const columns: QTableColumn[] = [
   { name: 'id', field: 'id', label: 'ID', align: 'left', sortable: true },
-  {
-    name: 'requester_name',
-    field: (row: ITravelOrder) => row.requester_name ?? row.user?.name ?? '—',
-    label: 'Solicitante',
-    align: 'left',
-    sortable: true,
-  },
+  { name: 'requester_name', field: (row: ITravelOrder) => row.requester_name ?? row.user?.name ?? '—', label: 'Solicitante', align: 'left', sortable: true },
   { name: 'destination', field: 'destination', label: 'Destino', align: 'left', sortable: true },
   { name: 'departure_date', field: 'departure_date', label: 'Ida', align: 'left', sortable: true },
   { name: 'return_date', field: 'return_date', label: 'Volta', align: 'left', sortable: true },
@@ -114,11 +118,7 @@ const columns: QTableColumn[] = [
 ];
 
 function translateStatus(status: string): string {
-  const map: Record<string, string> = {
-    requested: 'Solicitado',
-    approved: 'Aprovado',
-    canceled: 'Cancelado',
-  };
+  const map: Record<string, string> = { requested: 'Solicitado', approved: 'Aprovado', canceled: 'Cancelado' };
   return map[status] ?? status;
 }
 
@@ -153,15 +153,13 @@ async function onTableRequest(payload: ITableRequestPayload): Promise<void> {
 
 function confirmStatusUpdate(travelOrder: ITravelOrder, nextStatus: 'approved' | 'canceled'): void {
   const actionText = nextStatus === 'approved' ? 'aprovar' : 'cancelar';
-
   Dialog.create({
     title: 'Confirmar ação',
     message: `Tem certeza que deseja ${actionText} este pedido?`,
     cancel: true,
     persistent: true,
   }).onOk(() => {
-    applyStatusUpdate(travelOrder.id, nextStatus)
-      .catch(error => console.error('Erro ao atualizar status:', error));
+    applyStatusUpdate(travelOrder.id, nextStatus).catch(() => {});
   });
 }
 
@@ -172,5 +170,10 @@ async function applyStatusUpdate(orderId: number, nextStatus: 'approved' | 'canc
     return;
   }
   Notify.create({ type: 'negative', message: result.message || 'Erro ao atualizar status.', position: 'top-right' });
+}
+
+async function onCreatedOrder(): Promise<void> {
+  showCreate.value = false;
+  await fetchTravelOrders();
 }
 </script>
