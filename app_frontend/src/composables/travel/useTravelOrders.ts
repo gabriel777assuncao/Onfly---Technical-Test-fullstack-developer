@@ -34,6 +34,24 @@ export interface ITableRequestPayload {
   getCellValue: (column: unknown, row: unknown) => unknown;
 }
 
+export interface IUser {
+  id: number;
+  name: string;
+  email?: string;
+}
+
+export interface ITravelOrder {
+  id: number;
+  requester_name: string | null;
+  destination: string;
+  departure_date: string;
+  return_date: string;
+  status: 'requested' | 'approved' | 'canceled';
+  created_at: string;
+  user_id?: number;
+  user?: IUser | null;
+}
+
 interface ILaravelResourceCollection<T> {
   data: T[];
   meta?: { total?: number };
