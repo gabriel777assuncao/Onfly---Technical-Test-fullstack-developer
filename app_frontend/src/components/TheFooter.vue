@@ -18,7 +18,7 @@ import { computed } from 'vue';
 const year = computed<number>(() => new Date().getFullYear());
 
 function goToRepo(): void {
-  window.open('https://github.com/gabrielement777assuncao', '_blank', 'noopener,noreferrer');
+  window.open('https://github.com/gabriel777assuncao', '_blank', 'noopener,noreferrer');
 }
 
 function scrollTo(id: string): void {

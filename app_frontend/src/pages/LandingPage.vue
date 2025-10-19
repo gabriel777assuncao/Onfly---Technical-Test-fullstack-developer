@@ -59,19 +59,11 @@
               class="carousel"
             >
               <q-carousel-slide
-                name="s1"
-                img-src="https://images.unsplash.com/photo-1491557345352-5929e343eb89?q=80&w=1600&auto=format&fit=crop"
-                :img-alt="'Profissional com mala em aeroporto, viagem corporativa com conforto.'"
-              />
-              <q-carousel-slide
-                name="s2"
-                img-src="https://images.unsplash.com/photo-1502920917128-1aa500764cbd?q=80&w=1600&auto=format&fit=crop"
-                :img-alt="'Encontro de equipe, decisões ágeis e aprovações objetivas.'"
-              />
-              <q-carousel-slide
-                name="s3"
-                img-src="https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?q=80&w=1600&auto=format&fit=crop"
-                :img-alt="'Avião decolando, símbolo de movimento e produtividade.'"
+                v-for="img in carouselImages"
+                :key="img.name"
+                :name="img.name"
+                :img-src="img.src"
+                :img-alt="img.alt"
               />
             </q-carousel>
           </q-card>
@@ -204,6 +196,15 @@ import { storeToRefs } from 'pinia';
 import TheHeader from 'src/components/TheHeader.vue';
 import TheFooter from 'src/components/TheFooter.vue';
 import { useAuthStore } from 'src/stores/auth';
+import slide1 from 'src/assets/pexels-olly-838413.jpg';
+import slide2 from 'src/assets/pexels-pixabay-46148.jpg';
+import slide3 from 'src/assets/pexels-pixabay-265087.jpg';
+
+const carouselImages = [
+  { name: 's1', src: slide1, alt: 'Profissional com mala em aeroporto, viagem corporativa com conforto.' },
+  { name: 's2', src: slide2, alt: 'Encontro de equipe, decisões ágeis e aprovações objetivas.' },
+  { name: 's3', src: slide3, alt: 'Avião decolando, símbolo de movimento e produtividade.' }
+];
 
 const router = useRouter();
 const carouselSlide = ref<'s1' | 's2' | 's3'>('s1');
@@ -280,8 +281,23 @@ async function logout(): Promise<void> {
   white-space: nowrap;
 }
 
+.carousel :deep(.q-carousel__slide) {
+  background-color: transparent;
+}
+
 .carousel :deep(.q-carousel__control) {
-  background: rgba(0, 0, 0, 0.18);
+  background: none;
+}
+
+.carousel :deep(.q-carousel__slides-container) {
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.carousel :deep(img) {
+  object-fit: cover;
+  width: 100%;
+  height: 100%;
 }
 
 .card {
