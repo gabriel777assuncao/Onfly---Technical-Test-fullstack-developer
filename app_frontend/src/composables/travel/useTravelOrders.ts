@@ -120,7 +120,6 @@ export function useTravelOrders(options: UseTravelOrdersOptions = {}): {
   function extractErrorMessage(unknownError: unknown, fallbackMessageText = "Erro ao atualizar o status do pedido."): string {
     const structuredError = unknownError as ApiErrorShape;
 
-    // tenta pegar mensagem específica do campo status (Laravel 422)
     const firstStatusError = structuredError?.response?.data?.errors?.status?.[0];
     if (firstStatusError) return firstStatusError;
 
