@@ -1,6 +1,5 @@
 <template>
   <div class="q-gutter-md">
-    <!-- Header com filtros -->
     <div class="row items-center q-gutter-sm">
       <q-select
         v-model="selectedStatusFilter"
@@ -38,7 +37,6 @@
       />
     </div>
 
-    <!-- Tabela de pedidos -->
     <q-table
       :rows="travelOrders"
       :columns="tableColumnList"
@@ -50,7 +48,6 @@
       flat
       bordered
     >
-      <!-- Coluna de status -->
       <template #body-cell-status="slotScope">
         <q-td :props="slotScope">
           <q-badge
@@ -60,7 +57,6 @@
         </q-td>
       </template>
 
-      <!-- Coluna de ações -->
       <template #body-cell-actions="slotScope">
         <q-td :props="slotScope" class="text-right">
           <div v-if="shouldDisplayActionButtons(slotScope.row)" class="q-gutter-xs">
@@ -91,7 +87,6 @@
       </template>
     </q-table>
 
-    <!-- Modal de criação -->
     <CreateTravelOrderModal
       v-model="isCreateDialogVisible"
       :preset-requester-name="authenticationStore.user?.name ?? null"
@@ -109,14 +104,11 @@ import { useTravelOrders } from "src/composables/travel/useTravelOrders";
 import type { TravelOrderEntity, TableRequestPayload } from "src/types/travelOrder.types";
 import CreateTravelOrderModal from "components/travel/CreateTravelOrderForm.vue";
 
-/** ======== Stores e Estado Global ======== **/
 const authenticationStore = useAuthStore();
 const isAdministratorProfile = computed<boolean>(() => authenticationStore.isAdmin);
 
-/** ======== Estados Locais ======== **/
 const isCreateDialogVisible = ref<boolean>(false);
 
-/** ======== Composable Principal ======== **/
 const {
   travelOrders,
   isLoading,
@@ -133,7 +125,6 @@ const {
   isAdmin: isAdministratorProfile.value,
 });
 
-/** ======== Constantes de Status ======== **/
 const travelOrderStatusOptionList = [
   { label: "Solicitado", value: "requested" },
   { label: "Aprovado", value: "approved" },
@@ -152,7 +143,6 @@ const statusColorByCode: Record<string, string> = {
   canceled: "negative",
 };
 
-/** ======== Colunas da Tabela ======== **/
 const tableColumnList: QTableColumn[] = [
   { name: "id", field: "id", label: "ID", align: "left", sortable: true },
   {
@@ -170,7 +160,6 @@ const tableColumnList: QTableColumn[] = [
   { name: "actions", field: "id", label: "Ações", align: "right", sortable: false },
 ];
 
-/** ======== Lógica ======== **/
 function shouldDisplayActionButtons(travelOrder: TravelOrderEntity): boolean {
   return isAdministratorProfile.value && canUpdateStatus(travelOrder);
 }

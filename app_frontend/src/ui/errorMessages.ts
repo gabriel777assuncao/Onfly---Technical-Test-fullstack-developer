@@ -1,14 +1,20 @@
 import type { DomainError } from 'src/domain/errors';
 
+const MESSAGES = {
+  EMAIL_TAKEN: 'Este e-mail já está em uso.',
+  USERNAME_TAKEN: 'Este nome de usuário já está em uso.',
+  INVALID_CREDENTIALS: 'E-mail ou senha incorretos.',
+  VALIDATION: 'Verifique os campos do formulário.',
+  NETWORK: 'Sem conexão. Tente novamente em instantes.',
+} as const;
+
+function isKnownCode(code: string): code is keyof typeof MESSAGES {
+  return code in MESSAGES;
+}
+
 export function humanizeDomainError(err: DomainError): string {
-  switch (err.code) {
-    case 'EMAIL_TAKEN': return 'Este e-mail já está em uso.';
-    case 'USERNAME_TAKEN': return 'Este nome de usuário já está em uso.';
-    case 'INVALID_CREDENTIALS': return 'E-mail ou senha incorretos.';
-    case 'VALIDATION': return 'Verifique os campos do formulário.';
-    case 'NETWORK': return 'Sem conexão. Tente novamente em instantes.';
-    default: return 'Ops! Algo deu errado.';
-  }
+  const code = String(err.code);
+  return isKnownCode(code) ? MESSAGES[code] : 'Ops! Algo deu errado.';
 }
 
 export function pickFieldToFocus(err: DomainError): string | null {
