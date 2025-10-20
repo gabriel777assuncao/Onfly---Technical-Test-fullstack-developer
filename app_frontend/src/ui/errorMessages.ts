@@ -9,7 +9,6 @@ const MESSAGES = {
 } as const;
 
 function isKnownCode(code: string): code is keyof typeof MESSAGES {
-  // console.log(code);
   return code in MESSAGES;
 }
 
