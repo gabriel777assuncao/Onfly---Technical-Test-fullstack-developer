@@ -1,8 +1,8 @@
 <template>
   <q-card flat bordered class="q-pa-md">
     <div class="row items-center justify-between q-mb-md">
-      <div class="text-subtitle1">{{ title }}</div>
-      <q-badge outline color="grey-7" :label="totalLabel" />
+      <div class="text-subtitle1">{{ componentTitle }}</div>
+      <q-badge outline color="grey-7" :label="totalOrdersLabel" />
     </div>
 
     <div class="row q-col-gutter-md">
@@ -10,23 +10,21 @@
         <q-card flat bordered class="q-pa-md">
           <div class="text-caption text-grey-7 q-mb-sm">Distribuição por status</div>
 
-          <div v-if="isLoading" class="q-pa-md">
+          <div v-if="isLoadingData" class="q-pa-md">
             <q-skeleton type="circle" size="150px" />
           </div>
 
           <div v-else class="chart-box">
             <Doughnut
-              v-if="hasDoughnutData"
-              :data="doughnutData"
-              :options="doughnutOptions"
+              v-if="hasDoughnutValues"
+              :data="doughnutChartData"
+              :options="doughnutChartOptions"
               aria-label="Gráfico de pizza com a distribuição dos pedidos por status"
               role="img"
             />
             <div v-else class="text-grey-6 text-caption">Sem dados para exibir.</div>
 
-            <span class="sr-only">
-              {{ donutA11yDescription }}
-            </span>
+            <span class="sr-only">{{ doughnutAccessibilityDescription }}</span>
           </div>
         </q-card>
       </div>
@@ -35,23 +33,21 @@
         <q-card flat bordered class="q-pa-md">
           <div class="text-caption text-grey-7 q-mb-sm">Pedidos por mês</div>
 
-          <div v-if="isLoading" class="q-pa-md">
+          <div v-if="isLoadingData" class="q-pa-md">
             <q-skeleton height="160px" square />
           </div>
 
           <div v-else class="chart-box">
             <Line
-              v-if="hasLineData"
-              :data="lineData"
-              :options="lineOptions"
+              v-if="hasLineValues"
+              :data="lineChartData"
+              :options="lineChartOptions"
               aria-label="Gráfico de linha com a quantidade de pedidos por mês"
               role="img"
             />
             <div v-else class="text-grey-6 text-caption">Sem dados para exibir.</div>
 
-            <span class="sr-only">
-              {{ lineA11yDescription }}
-            </span>
+            <span class="sr-only">{{ lineAccessibilityDescription }}</span>
           </div>
         </q-card>
       </div>
@@ -60,9 +56,9 @@
 </template>
 
 <script setup lang="ts">
-import { computed, type PropType } from 'vue';
+import { computed, withDefaults, defineProps } from "vue";
 import {
-  Chart as ChartJS,
+  Chart as ChartJs,
   ArcElement,
   Tooltip,
   Legend,
@@ -73,174 +69,180 @@ import {
   type ChartData,
   type ChartOptions,
   type Plugin,
-} from 'chart.js';
-import { Doughnut, Line } from 'vue-chartjs';
+} from "chart.js";
+import { Doughnut, Line } from "vue-chartjs";
+import type {
+  TravelOrderEntity,
+  TravelOrdersInsightsProps as ComponentPropsShape,
+  OrderStatusCounter,
+  MonthlyAggregationResult,
+  MonthKeyAndLabelBuckets
+} from "src/types/travelOrder.types";
 
-ChartJS.register(ArcElement, Tooltip, Legend, LineElement, PointElement, LinearScale, CategoryScale);
+ChartJs.register(ArcElement, Tooltip, Legend, LineElement, PointElement, LinearScale, CategoryScale);
 
-export interface ITravelOrder {
-  id: number;
-  destination: string;
-  departure_date: string;
-  return_date: string;
-  status: 'requested' | 'approved' | 'canceled';
-  created_at: string;
-}
-
-interface IStatusCount {
-  requested: number;
-  approved: number;
-  canceled: number;
-}
-
-interface IMonthBuckets {
-  keys: string[];
-  labels: string[];
-}
-
-interface IMonthlyAggregation {
-  labels: string[];
-  data: number[];
-}
-
-const props = defineProps({
-  orders: { type: Array as PropType<ITravelOrder[]>, required: true },
-  isLoading: { type: Boolean, default: false },
-  monthsWindow: { type: Number, default: 6 },
-  title: { type: String, default: 'Visão Geral' },
+const props = withDefaults(defineProps<ComponentPropsShape>(), {
+  isLoading: false,
+  monthsWindow: 6,
+  title: "Visão Geral",
 });
 
-const COLOR_STATUS_REQUESTED = '#42A5F5';
-const COLOR_STATUS_APPROVED  = '#43A047';
-const COLOR_STATUS_CANCELED  = '#E53935';
-const COLOR_LINE_SERIES      = '#1E88E5';
+const componentTitle = computed<string>(() => props.title);
 
-const STATUS_LABEL_BY_CODE: Record<ITravelOrder['status'], string> = {
-  requested: 'Solicitado',
-  approved: 'Aprovado',
-  canceled: 'Cancelado',
+const isLoadingData = computed<boolean>(() => props.isLoading);
+
+const colorStatusRequested = "#42A5F5";
+const colorStatusApproved = "#43A047";
+const colorStatusCanceled = "#E53935";
+const colorLineSeries = "#1E88E5";
+
+const statusLabelByCode: Record<TravelOrderEntity["status"], string> = {
+  requested: "Solicitado",
+  approved: "Aprovado",
+  canceled: "Cancelado",
 };
 
-function getMonthKey(date: Date): string {
-  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+function buildMonthKeyFromDate(inputDate: Date): string {
+  return `${inputDate.getFullYear()}-${String(inputDate.getMonth() + 1).padStart(2, "0")}`;
 }
 
-function countOrdersByStatus(orders: ITravelOrder[]): IStatusCount {
-  return orders.reduce<IStatusCount>((accumulator, order) => {
-    accumulator[order.status] = (accumulator[order.status] ?? 0) + 1;
+function countOrdersByStatus(inputOrderList: TravelOrderEntity[]): OrderStatusCounter {
+  return inputOrderList.reduce<OrderStatusCounter>((accumulator, currentOrder) => {
+    accumulator[currentOrder.status] = (accumulator[currentOrder.status] ?? 0) + 1;
     return accumulator;
   }, { requested: 0, approved: 0, canceled: 0 });
 }
 
-function buildRecentMonthBuckets(totalMonths: number): IMonthBuckets {
-  const today = new Date();
-  const indexes = Array.from({ length: totalMonths }, (_, i) => totalMonths - 1 - i);
+function buildRecentMonthBuckets(totalMonths: number): MonthKeyAndLabelBuckets {
+  const todayDate = new Date();
+  const monthIndexOffsets = Array.from({ length: totalMonths }, (_, index) => totalMonths - 1 - index);
 
-  const keys: string[] = [];
-  const labels: string[] = [];
+  const monthKeyList: string[] = [];
+  const monthLabelList: string[] = [];
 
-  indexes.forEach((offset) => {
-    const date = new Date(today.getFullYear(), today.getMonth() - offset, 1);
-    const key = getMonthKey(date);
-    const label = date.toLocaleDateString('pt-BR', { month: 'short', year: '2-digit' });
-    keys.push(key);
-    labels.push(label);
+  monthIndexOffsets.forEach((offsetValue) => {
+    const monthBaseDate = new Date(todayDate.getFullYear(), todayDate.getMonth() - offsetValue, 1);
+    const monthKeyText = buildMonthKeyFromDate(monthBaseDate);
+    const monthLabelText = monthBaseDate.toLocaleDateString("pt-BR", { month: "short", year: "2-digit" });
+    monthKeyList.push(monthKeyText);
+    monthLabelList.push(monthLabelText);
   });
 
-  return { keys, labels };
+  return { keys: monthKeyList, labels: monthLabelList };
 }
 
-function aggregateOrdersByMonth(orders: ITravelOrder[], lastMonths: number): IMonthlyAggregation {
-  const { keys, labels } = buildRecentMonthBuckets(lastMonths);
-  const accumulator = new Map<string, number>(keys.map((k) => [k, 0]));
+function aggregateOrdersByMonth(inputOrderList: TravelOrderEntity[], monthWindowSize: number): MonthlyAggregationResult {
+  const { keys, labels } = buildRecentMonthBuckets(monthWindowSize);
+  const monthCounterMap = new Map<string, number>(keys.map((key) => [key, 0]));
 
-  orders.forEach((order) => {
-    const monthKey = getMonthKey(new Date(order.created_at));
-
-    if (!accumulator.has(monthKey)) {
+  inputOrderList.forEach((currentOrder) => {
+    const monthKey = buildMonthKeyFromDate(new Date(currentOrder.created_at));
+    if (!monthCounterMap.has(monthKey)) {
       return;
     }
-    accumulator.set(monthKey, (accumulator.get(monthKey) ?? 0) + 1);
+    monthCounterMap.set(monthKey, (monthCounterMap.get(monthKey) ?? 0) + 1);
   });
 
-  const data = keys.map((k) => accumulator.get(k) ?? 0);
-  return { labels, data };
+  const valueList = keys.map((key) => monthCounterMap.get(key) ?? 0);
+
+  return { labels, data: valueList };
 }
 
-function coerceToNumber(value: unknown): number {
-  if (typeof value === 'number') return value;
-  const maybeY = (value as { y?: unknown })?.y;
-  if (typeof maybeY === 'number') return maybeY;
-  const numeric = Number(value);
-  return Number.isFinite(numeric) ? numeric : 0;
+function coerceChartValueToNumber(inputValue: unknown): number {
+  if (typeof inputValue === "number") {
+    return inputValue;
+  }
+  const possiblePoint = (inputValue as { y?: unknown })?.y;
+  if (typeof possiblePoint === "number") {
+    return possiblePoint;
+  }
+  const numericValue = Number(inputValue);
+  return Number.isFinite(numericValue) ? numericValue : 0;
 }
 
-/** ===== Plugin: total no centro do donut ===== */
-const doughnutCenterTotalPlugin: Plugin<'doughnut'> = {
-  id: 'centerTotal',
-  afterDraw(chart): void {
-    const dataset = chart.data.datasets?.[0];
-    const rawValues = Array.isArray(dataset?.data) ? dataset.data : [];
-    const total = (rawValues as unknown[]).reduce<number>((sum, item) => sum + coerceToNumber(item), 0);
+const doughnutCenterTotalPlugin: Plugin<"doughnut"> = {
+  id: "centerTotal",
+  afterDraw(chartInstance): void {
+    const datasetReference = chartInstance.data.datasets?.[0];
+    const rawValueList = Array.isArray(datasetReference?.data) ? datasetReference.data : [];
+    const totalValue = (rawValueList as unknown[]).reduce<number>((sumValue, currentItem) => sumValue + coerceChartValueToNumber(currentItem), 0);
 
-    if (!total) return;
+    if (!totalValue) {
+      return;
+    }
 
-    const { ctx, chartArea } = chart;
-    const x = (chartArea.left + chartArea.right) / 2;
-    const y = (chartArea.top + chartArea.bottom) / 2;
+    const { ctx, chartArea } = chartInstance;
+    const centerX = (chartArea.left + chartArea.right) / 2;
+    const centerY = (chartArea.top + chartArea.bottom) / 2;
 
     ctx.save();
-    ctx.font = '600 16px system-ui, -apple-system, Roboto, Arial';
-    ctx.fillStyle = '#37474F';
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    ctx.fillText(String(total), x, y);
+    ctx.font = "600 16px system-ui, -apple-system, Roboto, Arial";
+    ctx.fillStyle = "#37474F";
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillText(String(totalValue), centerX, centerY);
     ctx.restore();
   },
 };
 
-ChartJS.register(doughnutCenterTotalPlugin);
+ChartJs.register(doughnutCenterTotalPlugin);
 
-const totalLabel = computed<string>(() => `${props.orders.length} pedido(s)`);
+const totalOrdersLabel = computed<string>(() => {
+  return `${props.orders.length} pedido(s)`;
+});
 
-const doughnutData = computed<ChartData<'doughnut'>>(() => {
-  const counts = countOrdersByStatus(props.orders);
+const statusCounter = computed<OrderStatusCounter>(() => {
+  return countOrdersByStatus(props.orders);
+});
 
+const doughnutTotal = computed<number>(() => {
+  return statusCounter.value.requested + statusCounter.value.approved + statusCounter.value.canceled;
+});
+
+const doughnutChartData = computed<ChartData<"doughnut">>(() => {
   return {
-    labels: [STATUS_LABEL_BY_CODE.requested, STATUS_LABEL_BY_CODE.approved, STATUS_LABEL_BY_CODE.canceled],
+    labels: [statusLabelByCode.requested, statusLabelByCode.approved, statusLabelByCode.canceled],
     datasets: [
       {
-        data: [counts.requested, counts.approved, counts.canceled],
-        backgroundColor: [COLOR_STATUS_REQUESTED, COLOR_STATUS_APPROVED, COLOR_STATUS_CANCELED],
+        data: [statusCounter.value.requested, statusCounter.value.approved, statusCounter.value.canceled],
+        backgroundColor: [colorStatusRequested, colorStatusApproved, colorStatusCanceled],
         borderWidth: 0,
       },
     ],
   };
 });
 
-const hasDoughnutData = computed<boolean>(() => (doughnutData.value.datasets?.[0]?.data?.length ?? 0) > 0);
+const hasDoughnutValues = computed<boolean>(() => {
+  return doughnutTotal.value > 0;
+});
 
-const doughnutOptions = {
+const doughnutChartOptions = {
   responsive: true,
   maintainAspectRatio: false,
   plugins: {
-    legend: { position: 'bottom' as const },
+    legend: { position: "bottom" as const },
     tooltip: { enabled: true },
   },
-} satisfies ChartOptions<'doughnut'>;
+} satisfies ChartOptions<"doughnut">;
 
-const lineData = computed<ChartData<'line'>>(() => {
-  const monthly = aggregateOrdersByMonth(props.orders, props.monthsWindow);
+const monthlyAggregation = computed<MonthlyAggregationResult>(() => {
+  return aggregateOrdersByMonth(props.orders, props.monthsWindow);
+});
 
+const lineTotal = computed<number>(() => {
+  return monthlyAggregation.value.data.reduce((sumValue, currentValue) => sumValue + currentValue, 0);
+});
+
+const lineChartData = computed<ChartData<"line">>(() => {
   return {
-    labels: monthly.labels,
+    labels: monthlyAggregation.value.labels,
     datasets: [
       {
-        label: 'Pedidos',
-        data: monthly.data,
+        label: "Pedidos",
+        data: monthlyAggregation.value.data,
         tension: 0.25,
-        borderColor: COLOR_LINE_SERIES,
-        pointBackgroundColor: COLOR_LINE_SERIES,
+        borderColor: colorLineSeries,
+        pointBackgroundColor: colorLineSeries,
         pointRadius: 3,
         fill: false,
       },
@@ -248,25 +250,24 @@ const lineData = computed<ChartData<'line'>>(() => {
   };
 });
 
-const hasLineData = computed<boolean>(() => (lineData.value.datasets?.[0]?.data?.length ?? 0) > 0);
+const hasLineValues = computed<boolean>(() => {
+  return lineTotal.value > 0;
+});
 
-const lineOptions = {
+const lineChartOptions = {
   responsive: true,
   maintainAspectRatio: false,
   scales: { y: { beginAtZero: true, ticks: { precision: 0 } } },
   plugins: { legend: { display: false }, tooltip: { enabled: true } },
-} satisfies ChartOptions<'line'>;
+} satisfies ChartOptions<"line">;
 
-const donutA11yDescription = computed<string>(() => {
-  const c = countOrdersByStatus(props.orders);
-
-  return `Total de ${props.orders.length} pedidos: ${c.requested} solicitados, ${c.approved} aprovados e ${c.canceled} cancelados.`;
+const doughnutAccessibilityDescription = computed<string>(() => {
+  return `Total de ${props.orders.length} pedidos: ${statusCounter.value.requested} solicitados, ${statusCounter.value.approved} aprovados e ${statusCounter.value.canceled} cancelados.`;
 });
 
-const lineA11yDescription = computed<string>(() => {
-  const monthly = aggregateOrdersByMonth(props.orders, props.monthsWindow);
-  const points = monthly.labels.map((label, i) => `${label}: ${monthly.data[i]}`).join('; ');
-  return `Série temporal de pedidos nos últimos ${props.monthsWindow} meses. ${points}.`;
+const lineAccessibilityDescription = computed<string>(() => {
+  const pointSummaryText = monthlyAggregation.value.labels.map((labelText, index) => `${labelText}: ${monthlyAggregation.value.data[index]}`).join("; ");
+  return `Série temporal de pedidos nos últimos ${props.monthsWindow} meses. ${pointSummaryText}.`;
 });
 </script>
 

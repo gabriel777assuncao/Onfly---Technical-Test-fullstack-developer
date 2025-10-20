@@ -5,25 +5,14 @@ import {
   me as meApi,
   refresh as refreshApi,
   register as registerApi,
-  type IUser,
-  type IRegisterPayload,
 } from 'src/services/auth';
 import { mapHttpToDomainError } from 'src/domain/errors';
-
-interface IAuthTokens {
-  token: string;
-  expires_at: string | null;
-}
+import type { IUser, IAuthTokens, IRegisterPayload, ILoginPayload } from 'src/types/auth.types';
 
 interface IAuthState {
   user: IUser | null;
   token: string | null;
   expiresAt: string | null;
-}
-
-interface ILoginPayload {
-  email: string;
-  password: string;
 }
 
 const TOKEN_KEY = 'token';
@@ -51,6 +40,7 @@ export const useAuthStore = defineStore('auth', {
         localStorage.removeItem(EXPIRES_AT_KEY);
         return;
       }
+
       localStorage.setItem(TOKEN_KEY, token);
 
       if (expiresAt) {
@@ -109,7 +99,6 @@ export const useAuthStore = defineStore('auth', {
       } catch (error: unknown) {
         this.user = null;
         this.applyTokens(null);
-
         throw mapHttpToDomainError(error);
       }
     },

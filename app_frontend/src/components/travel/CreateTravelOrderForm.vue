@@ -1,5 +1,5 @@
 <template>
-  <q-dialog v-model="visible" persistent>
+  <q-dialog v-model="dialogVisibilityProxy" persistent>
     <q-card class="min-w-[360px] w-[520px]">
       <q-card-section class="text-h6">
         Novo pedido de viagem
@@ -8,77 +8,81 @@
       <q-separator />
 
       <q-card-section>
-        <q-form ref="formRef" @submit.prevent="handleSubmit">
+        <q-form ref="formReference" @submit.prevent="onSubmit">
           <div class="q-gutter-md">
             <q-input
-              v-model="requesterName"
+              v-model="requesterFullName"
               label="Solicitante"
               dense
               outlined
               readonly
-              :disable="true"
-              :rules="[v => !!v || 'Obrigatório', v => String(v).length <= 255 || 'Máx. 255']"
+              :disable="isSubmittingRequest"
+              :rules="[
+                value => !!value || 'Obrigatório',
+                value => String(value).length <= 255 || 'Máx. 255'
+              ]"
             />
 
             <q-input
-              v-model="destination"
+              v-model="destinationCityName"
               label="Destino"
               dense
               outlined
-              :rules="[v => !!v || 'Obrigatório', v => String(v).length <= 255 || 'Máx. 255']"
-              :disable="isSubmitting"
+              :disable="isSubmittingRequest"
+              :rules="[
+                value => !!value || 'Obrigatório',
+                value => String(value).length <= 255 || 'Máx. 255'
+              ]"
             />
 
-            <!-- Data de ida -->
             <q-input
-              v-model="departureDate"
-              :display-value="toBr(departureDate)"
+              v-model="departureDateIsoText"
+              :display-value="formatIsoToBrazilianDate(departureDateIsoText)"
               label="Data de ida"
               dense
               outlined
               readonly
+              :disable="isSubmittingRequest"
               :rules="[
-                v => !!v || 'Obrigatório',
-                v => !v || v >= today || 'Data mínima: hoje'
+                value => !!value || 'Obrigatório',
+                value => !value || value >= currentDateIsoText || 'Data mínima: hoje'
               ]"
-              :disable="isSubmitting"
             >
               <template #append>
                 <q-icon name="event" class="cursor-pointer">
                   <q-popup-proxy cover transition-show="scale" transition-hide="scale">
                     <q-date
-                      v-model="departureDate"
+                      v-model="departureDateIsoText"
                       mask="YYYY-MM-DD"
-                      :locale="dateLocale"
-                      :options="allowDeparture"
+                      :locale="quasarDateLocale"
+                      :options="isDepartureDateAllowed"
                     />
                   </q-popup-proxy>
                 </q-icon>
               </template>
             </q-input>
 
-            <!-- Data de volta -->
             <q-input
-              v-model="returnDate"
-              :display-value="toBr(returnDate)"
+              v-model="returnDateIsoText"
+              :display-value="formatIsoToBrazilianDate(returnDateIsoText)"
               label="Data de volta"
               dense
               outlined
               readonly
+              :disable="isSubmittingRequest"
               :rules="[
-                v => !!v || 'Obrigatório',
-                v => !v || v > departureDate || 'Deve ser após a ida'
+                value => !!value || 'Obrigatório',
+                value => !value || value > departureDateIsoText || 'Deve ser após a ida'
               ]"
-              :disable="isSubmitting"
             >
               <template #append>
                 <q-icon name="event" class="cursor-pointer">
                   <q-popup-proxy cover transition-show="scale" transition-hide="scale">
                     <q-date
-                      v-model="returnDate"
+                      v-model="returnDateIsoText"
                       mask="YYYY-MM-DD"
-                      :locale="dateLocale"
-                      :options="allowReturn"
+                      :locale="quasarDateLocale"
+                      :options="isReturnDateAllowed"
                     />
                   </q-popup-proxy>
                 </q-icon>
@@ -95,14 +99,14 @@
           flat
           label="Cancelar"
           color="grey-8"
-          :disable="isSubmitting"
-          @click="close"
+          :disable="isSubmittingRequest"
+          @click="closeDialog"
         />
         <q-btn
           color="primary"
           label="Criar"
-          :loading="isSubmitting"
-          @click="submit"
+          :loading="isSubmittingRequest"
+          @click="onSubmit"
         />
       </q-card-actions>
     </q-card>
@@ -110,11 +114,14 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch, toRefs } from 'vue';
-import { Notify } from 'quasar';
-import { api } from 'src/boot/axios';
-import type { AxiosError } from 'axios';
-import ptBR from 'quasar/lang/pt-BR';
+import { ref, computed, toRefs } from "vue";
+import { Notify } from "quasar";
+import { api } from "boot/requests/httpClient";
+import type { AxiosError } from "axios";
+import quasarLanguage from "quasar/lang/pt-BR";
+import type {
+  CreateTravelOrderPayload,
+} from "src/types/travelOrder.types";
 
 interface Props {
   modelValue: boolean;
@@ -123,113 +130,130 @@ interface Props {
 
 const props = defineProps<Props>();
 const emit = defineEmits<{
-  (e: 'update:modelValue', value: boolean): void;
-  (e: 'created'): void;
+  (eventName: "update:modelValue", value: boolean): void,
+  (eventName: "created"): void,
 }>();
 
 const { modelValue, presetRequesterName } = toRefs(props);
 
-const visible = ref<boolean>(modelValue.value);
-watch(modelValue, v => { visible.value = v ?? false; });
-watch(visible, v => emit('update:modelValue', v));
+const dialogVisibilityProxy = computed<boolean>({
+  get: () => Boolean(modelValue.value),
+  set: (newVisibilityValue: boolean) => emit("update:modelValue", newVisibilityValue),
+});
 
-const formRef = ref();
-const requesterName = ref<string>(presetRequesterName?.value ?? '');
-const destination = ref<string>('');
-const departureDate = ref<string>('');
-const returnDate = ref<string>('');
-const isSubmitting = ref<boolean>(false);
+const formReference = ref();
+const requesterFullName = ref<string>(presetRequesterName?.value ?? "");
+const destinationCityName = ref<string>("");
+const departureDateIsoText = ref<string>("");
+const returnDateIsoText = ref<string>("");
+const isSubmittingRequest = ref<boolean>(false);
 
-// QDate requer objeto de locale
-const dateLocale = ptBR.date;
+const quasarDateLocale = quasarLanguage.date;
 
-// Hoje em ISO
-const today = computed(() => new Date().toISOString().slice(0, 10));
+const currentDateIsoText = computed<string>(() => {
+  return new Date().toISOString().slice(0, 10);
+});
 
-// Helpers -------------------------------------------------------------
-function toBr(iso: string): string {
-  if (!iso) return '';
-  const [y, m, d] = iso.split('-');
-  if (!y || !m || !d) return iso;
-  return `${d}/${m}/${y}`;
+function formatIsoToBrazilianDate(isoDateText: string): string {
+  if (!isoDateText) {
+    return "";
+  }
+
+  const datePartList = isoDateText.split("-");
+  if (datePartList.length !== 3) {
+    return isoDateText;
+  }
+
+  const formattedBrazilianDateText = `${datePartList[2]}/${datePartList[1]}/${datePartList[0]}`;
+
+  return formattedBrazilianDateText;
 }
 
-// QDate passa 'YYYY/MM/DD' em :options → normalizamos
-function normalize(dateStr: string): string {
-  return dateStr.replaceAll('/', '-');
+function normalizeDateToIsoMask(inputDateText: string): string {
+  return inputDateText.replaceAll("/", "-");
 }
 
-function allowDeparture(dateStr: string): boolean {
-  return normalize(dateStr) >= today.value;
+function isDepartureDateAllowed(inputDateText: string): boolean {
+  return normalizeDateToIsoMask(inputDateText) >= currentDateIsoText.value;
 }
 
-function allowReturn(dateStr: string): boolean {
-  if (!departureDate.value) return false;
-  return normalize(dateStr) > departureDate.value;
-}
-// --------------------------------------------------------------------
-
-function resetFields(): void {
-  requesterName.value = presetRequesterName?.value ?? '';
-  destination.value = '';
-  departureDate.value = '';
-  returnDate.value = '';
+function isReturnDateAllowed(inputDateText: string): boolean {
+  if (!departureDateIsoText.value) {
+    return false;
+  }
+  return normalizeDateToIsoMask(inputDateText) > departureDateIsoText.value;
 }
 
-function close(): void {
-  if (isSubmitting.value) return;
-  visible.value = false;
-  resetFields();
+function resetAllFields(): void {
+  requesterFullName.value = presetRequesterName?.value ?? "";
+  destinationCityName.value = "";
+  departureDateIsoText.value = "";
+  returnDateIsoText.value = "";
 }
 
-function extractApiMessage(error: unknown): string {
-  if (typeof error === 'string') return error;
-  if (error instanceof Error && error.message) return error.message;
+function closeDialog(): void {
+  if (isSubmittingRequest.value) {
+    return;
+  }
+  dialogVisibilityProxy.value = false;
+  resetAllFields();
+}
 
-  const axiosError = error as AxiosError<{ message?: string }>;
-  const apiMessage = axiosError?.response?.data?.message;
-  if (typeof apiMessage === 'string' && apiMessage.length > 0) return apiMessage;
+function extractApplicationMessageFromUnknownError(unknownError: unknown): string {
+  if (typeof unknownError === "string") {
+    return unknownError;
+  }
 
-  return 'Não foi possível criar o pedido.';
+  if (unknownError instanceof Error && unknownError.message) {
+    return unknownError.message;
+  }
+
+  const axiosErrorInstance = unknownError as AxiosError<{ message?: string }>;
+  const serverMessageText = axiosErrorInstance?.response?.data?.message;
+
+  if (typeof serverMessageText === "string" && serverMessageText.length > 0) {
+    return serverMessageText;
+  }
+
+  return "Não foi possível criar o pedido.";
 }
 
 async function onSubmit(): Promise<void> {
-  if (!formRef.value) return;
+  if (!formReference.value) {
+    return;
+  }
 
-  const valid = await formRef.value.validate();
-  if (!valid) return;
+  const isFormValid = await formReference.value.validate();
+  if (!isFormValid) {
+    return;
+  }
 
-  isSubmitting.value = true;
+  isSubmittingRequest.value = true;
 
   try {
-    await api.post('/travel-orders', {
-      requester_name: requesterName.value,
-      destination: destination.value,
-      departure_date: departureDate.value,
-      return_date: returnDate.value,
-    });
+    const requestPayload: CreateTravelOrderPayload = {
+      requester_name: requesterFullName.value,
+      destination: destinationCityName.value,
+      departure_date: departureDateIsoText.value,
+      return_date: returnDateIsoText.value,
+    };
+
+    await api.post("/travel-orders", requestPayload);
 
     Notify.create({
-      type: 'positive',
-      message: 'Pedido criado com sucesso!',
-      position: 'top-right'
+      type: "positive",
+      message: "Pedido criado com sucesso!",
+      position: "top-right",
     });
 
-    emit('created');
-    close();
-  } catch (e: unknown) {
-    const message = extractApiMessage(e);
-    Notify.create({ type: 'negative', message, position: 'top-right' });
-  } finally {
-    isSubmitting.value = false;
+    emit("created");
+    closeDialog();
+  } catch (unknownError) {
+    const messageText = extractApplicationMessageFromUnknownError(unknownError);
+    Notify.create({ type: "negative", message: messageText, position: "top-right" });
   }
-}
-
-function submit(): void {
-  void onSubmit();
-}
-
-function handleSubmit(): void {
-  void onSubmit();
+    finally {
+    isSubmittingRequest.value = false;
+  }
 }
 </script>

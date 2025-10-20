@@ -1,23 +1,18 @@
-export type DomainErrorCode =
-  | 'EMAIL_TAKEN'
-  | 'USERNAME_TAKEN'
-  | 'INVALID_CREDENTIALS'
-  | 'VALIDATION'
-  | 'NETWORK'
-  | 'UNKNOWN';
-
-type TakenCode = Extract<DomainErrorCode, 'EMAIL_TAKEN' | 'USERNAME_TAKEN'>;
-
-export type FieldErrors = Partial<Record<string, string[]>>;
+import {
+  DomainErrorCodeEnum,
+  type FieldErrorsShape,
+  type HttpLikeErrorShape,
+  type ApiPayloadShape,
+} from "src/types/errors.types";
 
 export class DomainError extends Error {
-  code: DomainErrorCode;
+  code: DomainErrorCodeEnum;
   fields?: string[];
-  details?: FieldErrors;
+  details?: FieldErrorsShape;
 
-  constructor(message: string, code: DomainErrorCode, fields?: string[], details?: FieldErrors) {
+  constructor(message: string, code: DomainErrorCodeEnum, fields?: string[], details?: FieldErrorsShape) {
     super(message);
-    this.name = 'DomainError';
+    this.name = "DomainError";
     this.code = code;
 
     if (fields !== undefined) {
@@ -30,160 +25,197 @@ export class DomainError extends Error {
   }
 }
 
-type HttpResponse = {
-  status?: number;
-  data?: unknown;
-};
-
-type HttpLikeError = {
-  response?: HttpResponse;
-};
-
-type ApiPayload = {
-  code?: string;
-  error_code?: string;
-  errorCode?: string;
-  message?: string;
-  error_message?: string;
-  fields?: string[];
-  errors?: FieldErrors;
-  error?: ApiPayload;
-  [key: string]: unknown;
-};
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null;
+function isPlainRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null;
 }
 
-function isApiPayload(value: unknown): value is ApiPayload {
-  return isRecord(value);
-}
+function pickKey<T = unknown>(source: Record<string, unknown> | undefined, key: string): T | undefined {
+  if (!source) {
+    return undefined;
+  }
 
-function pick<T = unknown>(obj: Record<string, unknown> | undefined, key: string): T | undefined {
-  if (!obj) return undefined;
-  return key in obj ? (obj[key] as T) : undefined;
-}
-
-function looksLikeTakenMessage(messages: string[] | undefined): boolean {
-  if (!messages || messages.length === 0) return false;
-
-  const pattern = /(já cadastrado|já está em uso|already exists|already taken)/i;
-  return messages.some((m) => pattern.test(m));
-}
-
-function getPayload(body: unknown): ApiPayload | undefined {
-  if (!isApiPayload(body)) return undefined;
-
-  const nested = pick<unknown>(body, 'error');
-  if (isApiPayload(nested)) return nested;
-
-  return body;
-}
-
-function normalizeApiCode(payload: ApiPayload | undefined): string {
-  const raw =
-    payload?.code ??
-    payload?.error_code ??
-    payload?.errorCode ??
-    '';
-  return String(raw || '').trim().toUpperCase();
-}
-
-function getApiMessage(payload: ApiPayload | undefined, fallback: string): string {
-  const msg = payload?.message ?? payload?.error_message;
-  return msg || fallback;
-}
-
-function getFieldErrors(source: unknown): FieldErrors | undefined {
-  if (!isApiPayload(source)) return undefined;
-  return source.errors;
-}
-
-function detectTakenFromErrors(errors: FieldErrors | undefined): TakenCode | undefined {
-  if (!errors) return undefined;
-
-  const emailMsgs = errors.email;
-  if (looksLikeTakenMessage(emailMsgs)) return 'EMAIL_TAKEN';
-
-  const usernameMsgs = errors.username ?? errors.user ?? errors.login;
-  if (looksLikeTakenMessage(usernameMsgs)) return 'USERNAME_TAKEN';
+  if (key in source) {
+    return source[key] as T;
+  }
 
   return undefined;
 }
 
-function makeTakenError(kind: TakenCode, details?: FieldErrors, fields?: string[]) {
-  const message = kind === 'EMAIL_TAKEN'
-    ? 'E-mail já cadastrado.'
-    : 'Usuário já cadastrado.';
+function looksLikeTaken(messages: string[] | undefined): boolean {
+  if (!messages || messages.length === 0) {
+    return false;
+  }
 
-  const defaultFields = kind === 'EMAIL_TAKEN' ? ['email'] : ['username'];
+  const pattern = /(já cadastrado|já está em uso|already exists|already taken)/i;
+  return messages.some((text) => pattern.test(text));
+}
+
+function extractApiPayload(body: unknown): ApiPayloadShape | undefined {
+  if (!isPlainRecord(body)) {
+    return undefined;
+  }
+
+  const nested = pickKey<unknown>(body, "error");
+
+  if (isPlainRecord(nested)) {
+    return nested as ApiPayloadShape;
+  }
+
+  return body as ApiPayloadShape;
+}
+
+function normalizeApiErrorCode(payload: ApiPayloadShape | undefined): string {
+  const raw = payload?.code ?? payload?.error_code ?? payload?.errorCode ?? "";
+  return String(raw || "").trim().toUpperCase();
+}
+
+const apiCodeToEnumMap: Record<string, DomainErrorCodeEnum> = {
+  EMAIL_TAKEN: DomainErrorCodeEnum.EMAIL_TAKEN,
+  USERNAME_TAKEN: DomainErrorCodeEnum.USERNAME_TAKEN,
+  INVALID_CREDENTIALS: DomainErrorCodeEnum.INVALID_CREDENTIALS,
+  VALIDATION: DomainErrorCodeEnum.VALIDATION,
+  NETWORK: DomainErrorCodeEnum.NETWORK,
+  UNKNOWN: DomainErrorCodeEnum.UNKNOWN,
+};
+
+function toDomainErrorEnum(codeText: string): DomainErrorCodeEnum | undefined {
+  if (!codeText) {
+    return undefined;
+  }
+
+  const match = apiCodeToEnumMap[codeText];
+  if (match !== undefined) {
+    return match;
+  }
+
+  return undefined;
+}
+
+function extractApiMessage(payload: ApiPayloadShape | undefined, fallbackMessageText: string): string {
+  const text = payload?.message ?? payload?.error_message;
+  if (text) {
+    return text;
+  }
+
+  return fallbackMessageText;
+}
+
+function extractFieldErrors(source: unknown): FieldErrorsShape | undefined {
+  if (!isPlainRecord(source)) {
+    return undefined;
+  }
+
+  return (source as ApiPayloadShape).errors;
+}
+
+function detectTakenFromFieldErrors(errors: FieldErrorsShape | undefined): DomainErrorCodeEnum | undefined {
+  if (!errors) {
+    return undefined;
+  }
+
+  const emailMessages = errors.email;
+  if (looksLikeTaken(emailMessages)) {
+    return DomainErrorCodeEnum.EMAIL_TAKEN;
+  }
+
+  const usernameMessages = errors.username ?? errors.user ?? errors.login;
+  if (looksLikeTaken(usernameMessages)) {
+    return DomainErrorCodeEnum.USERNAME_TAKEN;
+  }
+
+  return undefined;
+}
+
+function makeTakenError(kind: DomainErrorCodeEnum, details?: FieldErrorsShape, fields?: string[]) {
+  const message =
+    kind === DomainErrorCodeEnum.EMAIL_TAKEN
+      ? "E-mail já cadastrado."
+      : "Usuário já cadastrado.";
+
+  const defaultFields =
+    kind === DomainErrorCodeEnum.EMAIL_TAKEN
+      ? ["email"]
+      : ["username"];
+
   return new DomainError(message, kind, fields ?? defaultFields, details);
 }
 
-function resolveTakenFromPayload(payload: ApiPayload | undefined): DomainError | undefined {
-  const apiCode = normalizeApiCode(payload);
+function resolveTakenFromPayload(payload: ApiPayloadShape | undefined): DomainError | undefined {
+  const apiCodeText = normalizeApiErrorCode(payload);
+  const apiCodeEnum = toDomainErrorEnum(apiCodeText);
 
-  if (apiCode === 'EMAIL_TAKEN') {
-    return makeTakenError('EMAIL_TAKEN', payload?.errors, payload?.fields);
+  if (apiCodeEnum === DomainErrorCodeEnum.EMAIL_TAKEN) {
+    return makeTakenError(DomainErrorCodeEnum.EMAIL_TAKEN, payload?.errors, payload?.fields);
   }
 
-  if (apiCode === 'USERNAME_TAKEN') {
-    return makeTakenError('USERNAME_TAKEN', payload?.errors, payload?.fields);
+  if (apiCodeEnum === DomainErrorCodeEnum.USERNAME_TAKEN) {
+    return makeTakenError(DomainErrorCodeEnum.USERNAME_TAKEN, payload?.errors, payload?.fields);
   }
 
-  const takenFromErrors = detectTakenFromErrors(payload?.errors);
-  if (takenFromErrors) {
-    const hintFields: string[] | undefined =
-      takenFromErrors === 'EMAIL_TAKEN' ? ['email'] : ['username'];
+  const detected = detectTakenFromFieldErrors(payload?.errors);
 
-    return makeTakenError(takenFromErrors, payload?.errors, hintFields);
+  if (detected) {
+    const hintFields =
+      detected === DomainErrorCodeEnum.EMAIL_TAKEN
+        ? ["email"]
+        : ["username"];
+
+    return makeTakenError(detected, payload?.errors, hintFields);
   }
 
   return undefined;
 }
 
-export function mapHttpToDomainError(error: unknown): DomainError {
-  const http = error as HttpLikeError;
-  const status = http?.response?.status ?? 0;
+export function mapHttpToDomainError(unknownError: unknown): DomainError {
+  const httpLikeError = unknownError as HttpLikeErrorShape;
+  const statusCode = httpLikeError?.response?.status ?? 0;
 
-  const data = http?.response?.data;
-  const body = isRecord(data) ? data : undefined;
+  const rawData = httpLikeError?.response?.data;
+  const responseBody = isPlainRecord(rawData) ? rawData : undefined;
 
-  if (status === 0) {
-    return new DomainError('Falha de rede.', 'NETWORK');
+  if (statusCode === 0) {
+    return new DomainError("Falha de rede.", DomainErrorCodeEnum.NETWORK);
   }
 
-  if (status === 401) {
-    return new DomainError('Credenciais inválidas.', 'INVALID_CREDENTIALS');
+  if (statusCode === 401) {
+    return new DomainError("Credenciais inválidas.", DomainErrorCodeEnum.INVALID_CREDENTIALS);
   }
 
-  if (status === 422) {
-    const errorsObject: FieldErrors = getFieldErrors(body) ?? {};
-    const taken = detectTakenFromErrors(errorsObject);
+  if (statusCode === 422) {
+    const fieldErrors = extractFieldErrors(responseBody) ?? {};
+    const takenKind = detectTakenFromFieldErrors(fieldErrors);
 
-    if (taken) {
-      return makeTakenError(taken, errorsObject);
+    if (takenKind) {
+      return makeTakenError(takenKind, fieldErrors);
     }
 
-    const fields = Object.keys(errorsObject);
-    const message = (isRecord(body) ? pick<string>(body, 'message') : undefined) ?? 'Dados inválidos.';
-    return new DomainError(message, 'VALIDATION', fields, errorsObject);
+    const fieldList = Object.keys(fieldErrors);
+    const messageText =
+      (isPlainRecord(responseBody)
+        ? pickKey<string>(responseBody, "message")
+        : undefined) ?? "Dados inválidos.";
+
+    return new DomainError(messageText, DomainErrorCodeEnum.VALIDATION, fieldList, fieldErrors);
   }
 
-  if (status === 409) {
-    const payload = getPayload(body);
+  if (statusCode === 409) {
+    const payload = extractApiPayload(responseBody);
     const taken = resolveTakenFromPayload(payload);
 
     if (taken) {
       return taken;
     }
 
-    const apiMessage = getApiMessage(payload, 'Conflito.');
+    const apiMessageText = extractApiMessage(payload, "Conflito.");
     const apiFields = payload?.fields;
-    return new DomainError(apiMessage, 'VALIDATION', apiFields);
+
+    return new DomainError(apiMessageText, DomainErrorCodeEnum.VALIDATION, apiFields);
   }
 
-  const fallbackMessage =
-    (isRecord(body) ? pick<string>(body, 'message') : undefined) ?? 'Erro desconhecido.';
-  return new DomainError(fallbackMessage, 'UNKNOWN');
+  const fallbackMessageText =
+    (isPlainRecord(responseBody)
+      ? pickKey<string>(responseBody, "message")
+      : undefined) ?? "Erro desconhecido.";
+
+  return new DomainError(fallbackMessageText, DomainErrorCodeEnum.UNKNOWN);
 }
