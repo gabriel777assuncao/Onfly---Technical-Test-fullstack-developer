@@ -3,7 +3,7 @@ import { createRouter, createWebHistory, type RouteLocationNormalized } from 'vu
 import { useAuthStore } from 'src/stores/auth';
 
 export default route(function ({ store }) {
-  const Router = createRouter({
+  const router = createRouter({
     history: createWebHistory(),
     routes: [
       {
@@ -52,37 +52,39 @@ export default route(function ({ store }) {
     ],
   });
 
-  Router.beforeEach(async (to: RouteLocationNormalized) => {
-    const auth = useAuthStore(store);
+  router.beforeEach(async (toRoute: RouteLocationNormalized) => {
+    const authenticationStore = useAuthStore(store);
 
-    const needsAuth = Boolean(to.meta.requiresAuth);
-    const isGuestOnly = to.name === 'login' || to.name === 'register';
-    const hasToken = Boolean(auth.token);
+    const requiresAuthentication = Boolean(toRoute.meta.requiresAuth);
+    const isGuestOnlyRoute = toRoute.name === 'login' || toRoute.name === 'register';
+    const hasAccessToken = Boolean(authenticationStore.token);
 
-    if (needsAuth && !hasToken) {
-      return { name: 'login', query: { redirect: to.fullPath } };
+    if (requiresAuthentication && !hasAccessToken) {
+      return { name: 'login', query: { redirect: toRoute.fullPath } };
     }
 
-    if (hasToken && isGuestOnly) {
-      const target = (to.query.redirect as string) || '/app';
-      if (target === to.fullPath) {
+    if (hasAccessToken && isGuestOnlyRoute) {
+      const redirectTarget = (toRoute.query.redirect as string) || '/app';
+
+      if (redirectTarget === toRoute.fullPath) {
         return true;
-      };
-      return { path: target };
+      }
+
+      return { path: redirectTarget };
     }
 
-    if (hasToken && !auth.user) {
+    if (hasAccessToken && !authenticationStore.user) {
       try {
-        await auth.fetchUser?.();
+        await authenticationStore.fetchUser?.();
       } catch {
-        await auth.logoutUser?.();
+        await authenticationStore.logoutUser?.();
 
-        return { name: 'login', query: { redirect: to.fullPath } };
+        return { name: 'login', query: { redirect: toRoute.fullPath } };
       }
     }
 
     return true;
   });
 
-  return Router;
+  return router;
 });

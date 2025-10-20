@@ -9,10 +9,12 @@ const MESSAGES = {
 } as const;
 
 function isKnownCode(code: string): code is keyof typeof MESSAGES {
+  // console.log(code);
   return code in MESSAGES;
 }
 
 export function humanizeDomainError(err: DomainError): string {
+  console.log(err);
   const code = String(err.code);
   return isKnownCode(code) ? MESSAGES[code] : 'Ops! Algo deu errado.';
 }

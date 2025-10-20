@@ -161,14 +161,14 @@
 </template>
 
 <script setup lang="ts">
-import { computed, reactive, ref } from "vue";
-import { useRouter } from "vue-router";
-import { useAuthStore } from "src/stores/auth";
-import { Notify, Loading, type QForm } from "quasar";
+import {computed, reactive, ref} from "vue";
+import {useRouter} from "vue-router";
+import {useAuthStore} from "src/stores/auth";
+import {Loading, Notify, type QForm} from "quasar";
 import AuthShell from "components/auth/AuthShell.vue";
-import { useRegisterValidation } from "src/services/RegisterValidation";
-import { mapHttpToDomainError } from "src/domain/errors";
-import { mapDomainErrorToFieldErrorMap, type FieldErrorMap } from "src/domain/formErrorMapping";
+import {useRegisterValidation} from "src/services/RegisterValidation";
+import {DomainError, mapHttpToDomainError} from "src/domain/errors";
+import {type FieldErrorMap, mapDomainErrorToFieldErrorMap} from "src/domain/formErrorMapping";
 
 const router = useRouter();
 const authenticationStore = useAuthStore();
@@ -226,20 +226,13 @@ function togglePasswordConfirmationVisibility(): void {
   isShowingPasswordConfirmation.value = true;
 }
 
-
 function clearFieldErrors(): void {
   fieldErrorMap.value = {};
 }
 
 async function submitRegistration(): Promise<void> {
   const isFormValid = await formReference.value?.validate();
-  if (!isFormValid) {
-    return;
-  }
-
-  if (!canSubmitForm.value) {
-    return;
-  }
+  if (!isFormValid || !canSubmitForm.value) return;
 
   isSubmittingRequest.value = true;
   Loading.show();
@@ -255,23 +248,17 @@ async function submitRegistration(): Promise<void> {
       password_confirmation: registerForm.userPasswordConfirmation,
     });
 
-    Notify.create({
-      type: "positive",
-      message: "Conta criada e login efetuado! 🎉",
-      position: "top-right",
-    });
-
+    Notify.create({ type: "positive", message: "Conta criada e login efetuado! 🎉", position: "top-right" });
     await router.push("/");
   } catch (unknownError) {
-    const domainError = mapHttpToDomainError(unknownError);
-    const mappedErrors = mapDomainErrorToFieldErrorMap(domainError);
-    fieldErrorMap.value = mappedErrors;
 
-    Notify.create({
-      type: "negative",
-      message: domainError.message,
-      position: "top-right",
-    });
+    const domainError = unknownError instanceof DomainError
+      ? unknownError
+      : mapHttpToDomainError(unknownError);
+
+    fieldErrorMap.value = mapDomainErrorToFieldErrorMap(domainError);
+
+    Notify.create({ type: "negative", message: domainError.message, position: "top-right" });
   } finally {
     Loading.hide();
     isSubmittingRequest.value = false;
