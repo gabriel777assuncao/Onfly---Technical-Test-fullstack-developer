@@ -35,7 +35,7 @@ interface INormalizedList<T> {
 }
 
 interface ApiErrorShape {
-  response?: { status?: number, data?: { message?: string } },
+  response?: { status?: number, data?: { message?: string, errors?: Record<string, string[]> } },
 }
 
 export interface UseTravelOrdersOptions {
@@ -93,28 +93,24 @@ export function useTravelOrders(options: UseTravelOrdersOptions = {}): {
     if (wrapped?.data && Array.isArray(wrapped.data.data)) {
       const items = wrapped.data.data;
       const total = wrapped.data.meta?.total ?? items.length;
-
       return { items, total };
     }
 
     if (resource?.data && Array.isArray(resource.data)) {
       const items = resource.data;
       const total = resource.meta?.total ?? items.length;
-
       return { items, total };
     }
 
     if (Array.isArray(maybe?.data)) {
       const items = maybe.data;
       const total = maybe.meta?.total ?? items.length;
-
       return { items, total };
     }
 
     if (Array.isArray(response)) {
       const items = response;
       const total = response.length;
-
       return { items, total };
     }
 
@@ -123,18 +119,19 @@ export function useTravelOrders(options: UseTravelOrdersOptions = {}): {
 
   function extractErrorMessage(unknownError: unknown, fallbackMessageText = "Erro ao atualizar o status do pedido."): string {
     const structuredError = unknownError as ApiErrorShape;
-    const apiMessage = structuredError?.response?.data?.message;
 
-    if (apiMessage) {
-      return apiMessage;
-    }
+    // tenta pegar mensagem específica do campo status (Laravel 422)
+    const firstStatusError = structuredError?.response?.data?.errors?.status?.[0];
+    if (firstStatusError) return firstStatusError;
+
+    const apiMessage = structuredError?.response?.data?.message;
+    if (apiMessage) return apiMessage;
 
     return fallbackMessageText;
   }
 
   async function fetchTravelOrders(): Promise<void> {
     isLoading.value = true;
-
     try {
       const { data } = await api.get("/travel-orders", { params: computedQueryParams.value });
       const normalized = normalizeApiListResponse<TravelOrderEntity>(data);
@@ -157,13 +154,8 @@ export function useTravelOrders(options: UseTravelOrdersOptions = {}): {
   }
 
   function canUpdateStatus(order: TravelOrderEntity): boolean {
-    if (!isAdmin) {
-      return false;
-    }
-
-    if (order.status !== "requested") {
-      return false;
-    }
+    if (!isAdmin) return false;
+    if (order.status !== "requested") return false;
 
     const hasCurrentUser = currentUserId != null;
     const hasOwnerUser = order.user_id != null;
@@ -171,35 +163,24 @@ export function useTravelOrders(options: UseTravelOrdersOptions = {}): {
     if (hasCurrentUser && hasOwnerUser && currentUserId === order.user_id) {
       return false;
     }
-
     return true;
   }
 
   function applyOptimisticUpdate(orderIdentifierList: number[], nextStatusCode: "approved" | "canceled"): Map<number, TravelOrderEntity["status"]> {
     const previousStatusMap = new Map<number, TravelOrderEntity["status"]>();
-
     for (const order of travelOrders.value) {
       const isTarget = orderIdentifierList.includes(order.id);
-
-      if (!isTarget) {
-        continue;
-      }
-
+      if (!isTarget) continue;
       previousStatusMap.set(order.id, order.status);
       order.status = nextStatusCode;
     }
-
     return previousStatusMap;
   }
 
   function rollbackOptimisticUpdate(previousStatusMap: Map<number, TravelOrderEntity["status"]>): void {
     for (const order of travelOrders.value) {
       const previousStatus = previousStatusMap.get(order.id);
-
-      if (!previousStatus) {
-        continue;
-      }
-
+      if (!previousStatus) continue;
       order.status = previousStatus;
     }
   }
@@ -210,19 +191,16 @@ export function useTravelOrders(options: UseTravelOrdersOptions = {}): {
     }
 
     const targetOrder = travelOrders.value.find((order) => order.id === orderId);
-
     if (!targetOrder) {
       return { success: false, message: "Pedido não encontrado." };
     }
 
     const isAllowed = canUpdateStatus(targetOrder);
-
     if (!isAllowed) {
       return { success: false, message: "Não é possível alterar o status deste pedido." };
     }
 
     isUpdating.value = true;
-
     const previousStatusSnapshot = applyOptimisticUpdate([orderId], nextStatusCode);
 
     try {
@@ -232,7 +210,6 @@ export function useTravelOrders(options: UseTravelOrdersOptions = {}): {
     } catch (unknownError) {
       rollbackOptimisticUpdate(previousStatusSnapshot);
       isUpdating.value = false;
-
       const messageText = extractErrorMessage(unknownError);
       return { success: false, message: messageText };
     }

@@ -13,7 +13,7 @@ export interface CreateTravelOrderModalProps {
 }
 
 export interface TravelOrderEntity {
-  id: number,
+  id: number, // OBS: se seu backend mudar para string (ex: 'TRV-ABC123'), troque para `string`
   destination: string,
   departure_date: string,
   return_date: string,
