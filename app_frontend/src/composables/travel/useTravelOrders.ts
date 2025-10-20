@@ -7,29 +7,29 @@ import type {
   TravelOrderStatusUpdateResponse,
 } from "src/types/travelOrder.types";
 
-interface OrdersQueryParameters {
+interface IOrdersQueryParameters {
   page?: number,
   "page.size"?: number,
   sort?: string,
   "filter[status]"?: string,
 }
 
-interface LaravelResourceCollection<T> {
+interface ILaravelResourceCollection<T> {
   data: T[],
   meta?: { total?: number },
 }
 
-interface WrappedLaravelCollection<T> {
-  data: LaravelResourceCollection<T>,
+interface IWrappedLaravelCollection<T> {
+  data: ILaravelResourceCollection<T>,
 }
 
 type ApiListResponse<T> =
-  | WrappedLaravelCollection<T>
-  | LaravelResourceCollection<T>
+  | IWrappedLaravelCollection<T>
+  | ILaravelResourceCollection<T>
   | { data?: T[], meta?: { total?: number } }
   | T[];
 
-interface NormalizedList<T> {
+interface INormalizedList<T> {
   items: T[],
   total: number,
 }
@@ -49,7 +49,7 @@ export function useTravelOrders(options: UseTravelOrdersOptions = {}): {
   isUpdating: Ref<boolean>,
   selectedStatusFilter: Ref<string | null>,
   tablePagination: Ref<TablePaginationState>,
-  computedQueryParams: ComputedRef<OrdersQueryParameters>,
+  computedQueryParams: ComputedRef<IOrdersQueryParameters>,
   fetchTravelOrders: () => Promise<void>,
   handleTableRequest: (requestPayload: TableRequestPayload) => Promise<void>,
   resetAllFilters: () => Promise<void>,
@@ -71,8 +71,8 @@ export function useTravelOrders(options: UseTravelOrdersOptions = {}): {
     descending: true,
   });
 
-  const computedQueryParams = computed<OrdersQueryParameters>(() => {
-    const queryParams: OrdersQueryParameters = {
+  const computedQueryParams = computed<IOrdersQueryParameters>(() => {
+    const queryParams: IOrdersQueryParameters = {
       page: tablePagination.value.page,
       "page.size": tablePagination.value.rowsPerPage,
       sort: `${tablePagination.value.descending ? "-" : ""}${tablePagination.value.sortBy}`,
@@ -85,9 +85,9 @@ export function useTravelOrders(options: UseTravelOrdersOptions = {}): {
     return queryParams;
   });
 
-  function normalizeApiListResponse<T>(response: ApiListResponse<T>): NormalizedList<T> {
-    const wrapped = response as WrappedLaravelCollection<T>;
-    const resource = response as LaravelResourceCollection<T>;
+  function normalizeApiListResponse<T>(response: ApiListResponse<T>): INormalizedList<T> {
+    const wrapped = response as IWrappedLaravelCollection<T>;
+    const resource = response as ILaravelResourceCollection<T>;
     const maybe = response as { data?: T[], meta?: { total?: number } };
 
     if (wrapped?.data && Array.isArray(wrapped.data.data)) {

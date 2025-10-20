@@ -35,7 +35,8 @@ class TravelOrder extends Model
     {
         static::creating(function ($model) {
             if (! $model->id) {
-                $model->id = (string) Str::uuid();
+                $shortId = substr(Str::uuid()->toString(), 0, 7);
+                $model->id = 'TRV-' . strtoupper($shortId);
             }
         });
     }
