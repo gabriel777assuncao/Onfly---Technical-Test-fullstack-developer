@@ -7,35 +7,35 @@ import type {
   TravelOrderStatusUpdateResponse,
 } from "src/types/travelOrder.types";
 
-interface OrdersQueryParameters {
+interface IOrdersQueryParameters {
   page?: number,
   "page.size"?: number,
   sort?: string,
   "filter[status]"?: string,
 }
 
-interface LaravelResourceCollection<T> {
+interface ILaravelResourceCollection<T> {
   data: T[],
   meta?: { total?: number },
 }
 
-interface WrappedLaravelCollection<T> {
-  data: LaravelResourceCollection<T>,
+interface IWrappedLaravelCollection<T> {
+  data: ILaravelResourceCollection<T>,
 }
 
 type ApiListResponse<T> =
-  | WrappedLaravelCollection<T>
-  | LaravelResourceCollection<T>
+  | IWrappedLaravelCollection<T>
+  | ILaravelResourceCollection<T>
   | { data?: T[], meta?: { total?: number } }
   | T[];
 
-interface NormalizedList<T> {
+interface INormalizedList<T> {
   items: T[],
   total: number,
 }
 
 interface ApiErrorShape {
-  response?: { status?: number, data?: { message?: string } },
+  response?: { status?: number, data?: { message?: string, errors?: Record<string, string[]> } },
 }
 
 export interface UseTravelOrdersOptions {
@@ -49,7 +49,7 @@ export function useTravelOrders(options: UseTravelOrdersOptions = {}): {
   isUpdating: Ref<boolean>,
   selectedStatusFilter: Ref<string | null>,
   tablePagination: Ref<TablePaginationState>,
-  computedQueryParams: ComputedRef<OrdersQueryParameters>,
+  computedQueryParams: ComputedRef<IOrdersQueryParameters>,
   fetchTravelOrders: () => Promise<void>,
   handleTableRequest: (requestPayload: TableRequestPayload) => Promise<void>,
   resetAllFilters: () => Promise<void>,
@@ -71,8 +71,8 @@ export function useTravelOrders(options: UseTravelOrdersOptions = {}): {
     descending: true,
   });
 
-  const computedQueryParams = computed<OrdersQueryParameters>(() => {
-    const queryParams: OrdersQueryParameters = {
+  const computedQueryParams = computed<IOrdersQueryParameters>(() => {
+    const queryParams: IOrdersQueryParameters = {
       page: tablePagination.value.page,
       "page.size": tablePagination.value.rowsPerPage,
       sort: `${tablePagination.value.descending ? "-" : ""}${tablePagination.value.sortBy}`,
@@ -85,36 +85,32 @@ export function useTravelOrders(options: UseTravelOrdersOptions = {}): {
     return queryParams;
   });
 
-  function normalizeApiListResponse<T>(response: ApiListResponse<T>): NormalizedList<T> {
-    const wrapped = response as WrappedLaravelCollection<T>;
-    const resource = response as LaravelResourceCollection<T>;
+  function normalizeApiListResponse<T>(response: ApiListResponse<T>): INormalizedList<T> {
+    const wrapped = response as IWrappedLaravelCollection<T>;
+    const resource = response as ILaravelResourceCollection<T>;
     const maybe = response as { data?: T[], meta?: { total?: number } };
 
     if (wrapped?.data && Array.isArray(wrapped.data.data)) {
       const items = wrapped.data.data;
       const total = wrapped.data.meta?.total ?? items.length;
-
       return { items, total };
     }
 
     if (resource?.data && Array.isArray(resource.data)) {
       const items = resource.data;
       const total = resource.meta?.total ?? items.length;
-
       return { items, total };
     }
 
     if (Array.isArray(maybe?.data)) {
       const items = maybe.data;
       const total = maybe.meta?.total ?? items.length;
-
       return { items, total };
     }
 
     if (Array.isArray(response)) {
       const items = response;
       const total = response.length;
-
       return { items, total };
     }
 
@@ -123,18 +119,18 @@ export function useTravelOrders(options: UseTravelOrdersOptions = {}): {
 
   function extractErrorMessage(unknownError: unknown, fallbackMessageText = "Erro ao atualizar o status do pedido."): string {
     const structuredError = unknownError as ApiErrorShape;
-    const apiMessage = structuredError?.response?.data?.message;
 
-    if (apiMessage) {
-      return apiMessage;
-    }
+    const firstStatusError = structuredError?.response?.data?.errors?.status?.[0];
+    if (firstStatusError) return firstStatusError;
+
+    const apiMessage = structuredError?.response?.data?.message;
+    if (apiMessage) return apiMessage;
 
     return fallbackMessageText;
   }
 
   async function fetchTravelOrders(): Promise<void> {
     isLoading.value = true;
-
     try {
       const { data } = await api.get("/travel-orders", { params: computedQueryParams.value });
       const normalized = normalizeApiListResponse<TravelOrderEntity>(data);
@@ -157,13 +153,8 @@ export function useTravelOrders(options: UseTravelOrdersOptions = {}): {
   }
 
   function canUpdateStatus(order: TravelOrderEntity): boolean {
-    if (!isAdmin) {
-      return false;
-    }
-
-    if (order.status !== "requested") {
-      return false;
-    }
+    if (!isAdmin) return false;
+    if (order.status !== "requested") return false;
 
     const hasCurrentUser = currentUserId != null;
     const hasOwnerUser = order.user_id != null;
@@ -171,35 +162,24 @@ export function useTravelOrders(options: UseTravelOrdersOptions = {}): {
     if (hasCurrentUser && hasOwnerUser && currentUserId === order.user_id) {
       return false;
     }
-
     return true;
   }
 
   function applyOptimisticUpdate(orderIdentifierList: number[], nextStatusCode: "approved" | "canceled"): Map<number, TravelOrderEntity["status"]> {
     const previousStatusMap = new Map<number, TravelOrderEntity["status"]>();
-
     for (const order of travelOrders.value) {
       const isTarget = orderIdentifierList.includes(order.id);
-
-      if (!isTarget) {
-        continue;
-      }
-
+      if (!isTarget) continue;
       previousStatusMap.set(order.id, order.status);
       order.status = nextStatusCode;
     }
-
     return previousStatusMap;
   }
 
   function rollbackOptimisticUpdate(previousStatusMap: Map<number, TravelOrderEntity["status"]>): void {
     for (const order of travelOrders.value) {
       const previousStatus = previousStatusMap.get(order.id);
-
-      if (!previousStatus) {
-        continue;
-      }
-
+      if (!previousStatus) continue;
       order.status = previousStatus;
     }
   }
@@ -210,19 +190,16 @@ export function useTravelOrders(options: UseTravelOrdersOptions = {}): {
     }
 
     const targetOrder = travelOrders.value.find((order) => order.id === orderId);
-
     if (!targetOrder) {
       return { success: false, message: "Pedido não encontrado." };
     }
 
     const isAllowed = canUpdateStatus(targetOrder);
-
     if (!isAllowed) {
       return { success: false, message: "Não é possível alterar o status deste pedido." };
     }
 
     isUpdating.value = true;
-
     const previousStatusSnapshot = applyOptimisticUpdate([orderId], nextStatusCode);
 
     try {
@@ -232,7 +209,6 @@ export function useTravelOrders(options: UseTravelOrdersOptions = {}): {
     } catch (unknownError) {
       rollbackOptimisticUpdate(previousStatusSnapshot);
       isUpdating.value = false;
-
       const messageText = extractErrorMessage(unknownError);
       return { success: false, message: messageText };
     }
