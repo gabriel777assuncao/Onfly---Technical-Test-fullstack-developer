@@ -33,6 +33,7 @@ class AuthControllerTest extends FeatureTestCase
             'username' => 'anadev',
             'email' => 'ana@example.com',
             'password' => 'StrongP@ssw0rd',
+            'password_confirmation' => 'StrongP@ssw0rd',
         ];
 
         $response = $this->postJson('/api/auth/register', $requestPayload);
