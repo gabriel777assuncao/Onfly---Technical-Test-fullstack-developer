@@ -224,6 +224,9 @@ Assim, o frontend pode se comunicar internamente com o backend via `http://php:9
 | E-mails visíveis | `http://localhost:8025`                  | Interface Mailhog OK |             |
 
 ---
+## Deploy da Aplicação:
+
+Está disponível em: https://onfly-technical-test-fullstack-deve.vercel.app/
 
 ## 👨‍💻 Autor
 
