@@ -1,0 +1,33 @@
+<template>
+  <q-page class="flex flex-center">
+    <div class="column items-center q-gutter-md">
+      <div class="text-h5">Bem-vindo ao Onfly Travel Manager 🚀</div>
+      <q-btn color="primary" label="Ir para Login" @click="goLogin" />
+    </div>
+  </q-page>
+</template>
+
+<script setup lang="ts">
+import { useRouter } from 'vue-router'
+import { ref } from 'vue'
+import { Notify } from 'quasar'
+
+const router = useRouter()
+const isLoading = ref(false)
+
+async function goLogin() {
+  try {
+    isLoading.value = true
+
+    await new Promise(resolve => setTimeout(resolve, 1000))
+    await router.push('/login')
+  } catch {
+    Notify.create({
+      type: 'negative',
+      message: 'Não foi possível acessar a tela de login.'
+    })
+  } finally {
+    isLoading.value = false
+  }
+}
+</script>

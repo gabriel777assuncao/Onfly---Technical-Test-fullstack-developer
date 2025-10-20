@@ -18,22 +18,23 @@ function shouldDisplayGlobalLoading(inputConfiguration?: InternalAxiosRequestCon
   if (!inputConfiguration) {
     return false;
   }
+
   const requestConfiguration = inputConfiguration as RetriableRequestConfiguration;
   if (requestConfiguration.__displayGlobalLoading === false) {
     return false;
   }
+
   const requestUrlText = String(requestConfiguration.url || "");
-  if (requestUrlText.includes("/auth/refresh")) {
-    return false;
-  }
-  return true;
+  return !requestUrlText.includes("/auth/refresh");
 }
 
 function startGlobalLoading(inputConfiguration?: InternalAxiosRequestConfig | null): void {
   if (!shouldDisplayGlobalLoading(inputConfiguration)) {
     return;
   }
+
   activeRequestCount += 1;
+
   if (activeRequestCount === 1) {
     displayLoadingTimerIdentifier = window.setTimeout(() => {
       Loading.show({ spinner: QSpinnerGears });
@@ -45,6 +46,7 @@ function stopGlobalLoading(inputConfiguration?: InternalAxiosRequestConfig | nul
   if (!shouldDisplayGlobalLoading(inputConfiguration)) {
     return;
   }
+
   activeRequestCount = Math.max(0, activeRequestCount - 1);
   if (activeRequestCount === 0) {
     if (displayLoadingTimerIdentifier) {
