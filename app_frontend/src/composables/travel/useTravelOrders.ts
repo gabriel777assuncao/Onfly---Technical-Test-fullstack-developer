@@ -7,24 +7,36 @@ import type {
   TravelOrderStatusUpdateResponse,
 } from "src/types/travelOrder.types";
 
-type OrdersQueryParameters = {
+interface OrdersQueryParameters {
   page?: number,
   "page.size"?: number,
   sort?: string,
   "filter[status]"?: string,
-};
+}
 
-type LaravelResourceCollection<T> = { data: T[], meta?: { total?: number } };
-type WrappedLaravelCollection<T> = { data: LaravelResourceCollection<T> };
+interface LaravelResourceCollection<T> {
+  data: T[],
+  meta?: { total?: number },
+}
+
+interface WrappedLaravelCollection<T> {
+  data: LaravelResourceCollection<T>,
+}
+
 type ApiListResponse<T> =
   | WrappedLaravelCollection<T>
   | LaravelResourceCollection<T>
   | { data?: T[], meta?: { total?: number } }
   | T[];
 
-type NormalizedList<T> = { items: T[], total: number };
+interface NormalizedList<T> {
+  items: T[],
+  total: number,
+}
 
-type ApiErrorShape = { response?: { status?: number, data?: { message?: string } } };
+interface ApiErrorShape {
+  response?: { status?: number, data?: { message?: string } },
+}
 
 export interface UseTravelOrdersOptions {
   currentUserId?: number | null,
@@ -65,7 +77,11 @@ export function useTravelOrders(options: UseTravelOrdersOptions = {}): {
       "page.size": tablePagination.value.rowsPerPage,
       sort: `${tablePagination.value.descending ? "-" : ""}${tablePagination.value.sortBy}`,
     };
-    if (selectedStatusFilter.value) queryParams["filter[status]"] = selectedStatusFilter.value;
+
+    if (selectedStatusFilter.value) {
+      queryParams["filter[status]"] = selectedStatusFilter.value;
+    }
+
     return queryParams;
   });
 
@@ -73,20 +89,52 @@ export function useTravelOrders(options: UseTravelOrdersOptions = {}): {
     const wrapped = response as WrappedLaravelCollection<T>;
     const resource = response as LaravelResourceCollection<T>;
     const maybe = response as { data?: T[], meta?: { total?: number } };
-    if (wrapped?.data && Array.isArray(wrapped.data.data)) return { items: wrapped.data.data, total: wrapped.data.meta?.total ?? wrapped.data.data.length };
-    if (resource?.data && Array.isArray(resource.data)) return { items: resource.data, total: resource.meta?.total ?? resource.data.length };
-    if (Array.isArray(maybe?.data)) return { items: maybe.data, total: maybe.meta?.total ?? maybe.data.length };
-    if (Array.isArray(response)) return { items: response, total: response.length };
+
+    if (wrapped?.data && Array.isArray(wrapped.data.data)) {
+      const items = wrapped.data.data;
+      const total = wrapped.data.meta?.total ?? items.length;
+
+      return { items, total };
+    }
+
+    if (resource?.data && Array.isArray(resource.data)) {
+      const items = resource.data;
+      const total = resource.meta?.total ?? items.length;
+
+      return { items, total };
+    }
+
+    if (Array.isArray(maybe?.data)) {
+      const items = maybe.data;
+      const total = maybe.meta?.total ?? items.length;
+
+      return { items, total };
+    }
+
+    if (Array.isArray(response)) {
+      const items = response;
+      const total = response.length;
+
+      return { items, total };
+    }
+
     return { items: [], total: 0 };
   }
 
-  function extractErrorMessage(error: unknown, fallback = "Erro ao atualizar o status do pedido."): string {
-    const structuredError = error as ApiErrorShape;
-    return structuredError?.response?.data?.message ?? fallback;
+  function extractErrorMessage(unknownError: unknown, fallbackMessageText = "Erro ao atualizar o status do pedido."): string {
+    const structuredError = unknownError as ApiErrorShape;
+    const apiMessage = structuredError?.response?.data?.message;
+
+    if (apiMessage) {
+      return apiMessage;
+    }
+
+    return fallbackMessageText;
   }
 
   async function fetchTravelOrders(): Promise<void> {
     isLoading.value = true;
+
     try {
       const { data } = await api.get("/travel-orders", { params: computedQueryParams.value });
       const normalized = normalizeApiListResponse<TravelOrderEntity>(data);
@@ -117,65 +165,86 @@ export function useTravelOrders(options: UseTravelOrdersOptions = {}): {
       return false;
     }
 
-    const hasUser = currentUserId != null;
-    const hasOwner = order.user_id != null;
+    const hasCurrentUser = currentUserId != null;
+    const hasOwnerUser = order.user_id != null;
 
-    if (hasUser && hasOwner && currentUserId === order.user_id) {
+    if (hasCurrentUser && hasOwnerUser && currentUserId === order.user_id) {
       return false;
     }
 
     return true;
   }
 
-  function applyOptimisticUpdate(orderIds: number[], nextStatus: "approved" | "canceled"): Map<number, TravelOrderEntity["status"]> {
-    const snapshot = new Map<number, TravelOrderEntity["status"]>();
+  function applyOptimisticUpdate(orderIdentifierList: number[], nextStatusCode: "approved" | "canceled"): Map<number, TravelOrderEntity["status"]> {
+    const previousStatusMap = new Map<number, TravelOrderEntity["status"]>();
+
     for (const order of travelOrders.value) {
-      if (!orderIds.includes(order.id)) continue;
-      snapshot.set(order.id, order.status);
-      order.status = nextStatus;
+      const isTarget = orderIdentifierList.includes(order.id);
+
+      if (!isTarget) {
+        continue;
+      }
+
+      previousStatusMap.set(order.id, order.status);
+      order.status = nextStatusCode;
     }
-    return snapshot;
+
+    return previousStatusMap;
   }
 
-  function rollbackOptimisticUpdate(snapshot: Map<number, TravelOrderEntity["status"]>): void {
+  function rollbackOptimisticUpdate(previousStatusMap: Map<number, TravelOrderEntity["status"]>): void {
     for (const order of travelOrders.value) {
-      const previousStatus = snapshot.get(order.id);
-      if (previousStatus) order.status = previousStatus;
+      const previousStatus = previousStatusMap.get(order.id);
+
+      if (!previousStatus) {
+        continue;
+      }
+
+      order.status = previousStatus;
     }
   }
 
-  async function updateOrderStatus(orderId: number, nextStatus: "approved" | "canceled"): Promise<TravelOrderStatusUpdateResponse> {
+  async function updateOrderStatus(orderId: number, nextStatusCode: "approved" | "canceled"): Promise<TravelOrderStatusUpdateResponse> {
     if (!isAdmin) {
-      return {success: false, message: "Apenas administradores podem alterar o status."}
-    };
-
-    const target = travelOrders.value.find((order) => order.id === orderId);
-
-    if (!target) {
-      return {success: false, message: "Pedido não encontrado."}
+      return { success: false, message: "Apenas administradores podem alterar o status." };
     }
 
-    if (!canUpdateStatus(target)) {
-      return {success: false, message: "Não é possível alterar o status deste pedido."}
+    const targetOrder = travelOrders.value.find((order) => order.id === orderId);
+
+    if (!targetOrder) {
+      return { success: false, message: "Pedido não encontrado." };
+    }
+
+    const isAllowed = canUpdateStatus(targetOrder);
+
+    if (!isAllowed) {
+      return { success: false, message: "Não é possível alterar o status deste pedido." };
     }
 
     isUpdating.value = true;
-    const snapshot = applyOptimisticUpdate([orderId], nextStatus);
+
+    const previousStatusSnapshot = applyOptimisticUpdate([orderId], nextStatusCode);
 
     try {
-      await api.patch(`/travel-orders/${orderId}/status`, { status: nextStatus });
+      await api.patch(`/travel-orders/${orderId}/status`, { status: nextStatusCode });
       isUpdating.value = false;
-      return { success: true, message: `Pedido ${nextStatus === "approved" ? "aprovado" : "cancelado"} com sucesso!` };
-    } catch (error) {
-      rollbackOptimisticUpdate(snapshot);
+      return { success: true, message: `Pedido ${nextStatusCode === "approved" ? "aprovado" : "cancelado"} com sucesso!` };
+    } catch (unknownError) {
+      rollbackOptimisticUpdate(previousStatusSnapshot);
       isUpdating.value = false;
-      const message = extractErrorMessage(error);
 
-      return { success: false, message };
+      const messageText = extractErrorMessage(unknownError);
+      return { success: false, message: messageText };
     }
   }
 
-  watch(computedQueryParams, async () => { await fetchTravelOrders(); }, { immediate: true });
+  watch(
+    computedQueryParams,
+    async () => {
+      await fetchTravelOrders();
+    },
+    { immediate: true },
+  );
 
   return {
     travelOrders,
