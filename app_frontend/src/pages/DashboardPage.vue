@@ -18,8 +18,8 @@
 </template>
 
 <script setup lang="ts">
-import TravelOrdersInsights from 'src/components/TravelOrdersInsights.vue';
-import TravelOrdersTable from 'src/components/TravelOrdersTable.vue';
+import TravelOrdersInsights from 'components/travel/TravelOrdersInsights.vue';
+import TravelOrdersTable from 'components/travel/TravelOrdersTable.vue';
 import { useTravelOrders } from 'src/composables/travel/useTravelOrders';
 import { useAuthStore } from 'src/stores/auth';
 import { computed } from 'vue';

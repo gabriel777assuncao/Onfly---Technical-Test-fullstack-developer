@@ -18,6 +18,7 @@
         rounded
       >
         <template #prepend><q-icon name="badge" /></template>
+        <template v-if="fieldErrorMap.fullName" #error>{{ fieldErrorMap.fullName }}</template>
       </q-input>
 
       <q-input
@@ -31,6 +32,7 @@
       >
         <template #prepend><q-icon name="alternate_email" /></template>
         <template #hint>Nome de usuário para login</template>
+        <template v-if="fieldErrorMap.username" #error>{{ fieldErrorMap.username }}</template>
       </q-input>
 
       <q-input
@@ -44,6 +46,7 @@
         rounded
       >
         <template #prepend><q-icon name="mail" /></template>
+        <template v-if="fieldErrorMap.email" #error>{{ fieldErrorMap.email }}</template>
       </q-input>
 
       <q-input
@@ -67,12 +70,6 @@
             @click="formActions.togglePasswordVisibility"
             @keydown.enter.prevent="formActions.togglePasswordVisibility"
             @keydown.space.prevent="formActions.togglePasswordVisibility"
-            @mousedown.prevent="formActions.setPasswordVisibilityWhilePressing(true)"
-            @mouseup="formActions.setPasswordVisibilityWhilePressing(false)"
-            @mouseleave="formActions.setPasswordVisibilityWhilePressing(false)"
-            @touchstart.passive="formActions.setPasswordVisibilityWhilePressing(true)"
-            @touchend.passive="formActions.setPasswordVisibilityWhilePressing(false)"
-            :aria-label="isShowingPassword ? 'Ocultar senha' : 'Mostrar senha'"
           />
         </template>
         <template #hint>
@@ -86,6 +83,7 @@
             <span class="text-caption text-grey-7">{{ passwordStrengthView.label }}</span>
           </div>
         </template>
+        <template v-if="fieldErrorMap.password" #error>{{ fieldErrorMap.password }}</template>
       </q-input>
 
       <q-input
@@ -109,13 +107,10 @@
             @click="formActions.togglePasswordConfirmationVisibility"
             @keydown.enter.prevent="formActions.togglePasswordConfirmationVisibility"
             @keydown.space.prevent="formActions.togglePasswordConfirmationVisibility"
-            @mousedown.prevent="formActions.setPasswordConfirmationVisibilityWhilePressing(true)"
-            @mouseup="formActions.setPasswordConfirmationVisibilityWhilePressing(false)"
-            @mouseleave="formActions.setPasswordConfirmationVisibilityWhilePressing(false)"
-            @touchstart.passive="formActions.setPasswordConfirmationVisibilityWhilePressing(true)"
-            @touchend.passive="formActions.setPasswordConfirmationVisibilityWhilePressing(false)"
-            :aria-label="isShowingPasswordConfirmation ? 'Ocultar senha' : 'Mostrar senha'"
           />
+        </template>
+        <template v-if="fieldErrorMap.password_confirmation" #error>
+          {{ fieldErrorMap.password_confirmation }}
         </template>
       </q-input>
 
@@ -166,25 +161,24 @@
 </template>
 
 <script setup lang="ts">
-import { computed, reactive, ref } from 'vue';
-import { useRouter } from 'vue-router';
-import { useAuthStore } from 'src/stores/auth';
-import { Notify, Loading, type QForm } from 'quasar';
-import { useNotifyError } from 'src/composables/useNotifyError';
-import { pickFieldToFocus } from 'src/ui/errorMessages';
-import type { DomainError } from 'src/domain/errors';
-import AuthShell from 'src/components/AuthShell.vue';
-import { useRegisterValidation } from 'src/services/RegisterValidation';
+import { computed, reactive, ref } from "vue";
+import { useRouter } from "vue-router";
+import { useAuthStore } from "src/stores/auth";
+import { Notify, Loading, type QForm } from "quasar";
+import AuthShell from "components/auth/AuthShell.vue";
+import { useRegisterValidation } from "src/services/RegisterValidation";
+import { mapHttpToDomainError } from "src/domain/errors";
+import { mapDomainErrorToFieldErrorMap, type FieldErrorMap } from "src/domain/formErrorMapping";
 
 const router = useRouter();
 const authenticationStore = useAuthStore();
-const { notifyError } = useNotifyError();
 
 const formReference = ref<QForm | null>(null);
 const isSubmittingRequest = ref<boolean>(false);
 const hasAcceptedTerms = ref<boolean>(false);
 const isShowingPassword = ref<boolean>(false);
 const isShowingPasswordConfirmation = ref<boolean>(false);
+const fieldErrorMap = ref<FieldErrorMap>({});
 
 type RegisterForm = {
   fullName: string;
@@ -195,18 +189,47 @@ type RegisterForm = {
 };
 
 const registerForm = reactive<RegisterForm>({
-  fullName: '',
-  userName: '',
-  emailAddress: '',
-  userPassword: '',
-  userPasswordConfirmation: '',
+  fullName: "",
+  userName: "",
+  emailAddress: "",
+  userPassword: "",
+  userPasswordConfirmation: "",
 });
 
-const { validationRules, mustAcceptTermsRule, passwordStrengthView } = useRegisterValidation(() => registerForm.userPassword);
+const { validationRules, mustAcceptTermsRule, passwordStrengthView } =
+  useRegisterValidation(() => registerForm.userPassword);
 
 const canSubmitForm = computed<boolean>(() => {
-  return !isSubmittingRequest.value && hasAcceptedTerms.value;
+  const hasTerms = hasAcceptedTerms.value === true;
+  const isBusy = isSubmittingRequest.value === true;
+
+  return !isBusy && hasTerms;
 });
+
+function togglePasswordVisibility(): void {
+  const isVisible = isShowingPassword.value === true;
+  if (isVisible) {
+    isShowingPassword.value = false;
+    return;
+  }
+
+  isShowingPassword.value = true;
+}
+
+function togglePasswordConfirmationVisibility(): void {
+  const isVisible = isShowingPasswordConfirmation.value === true;
+  if (isVisible) {
+    isShowingPasswordConfirmation.value = false;
+    return;
+  }
+
+  isShowingPasswordConfirmation.value = true;
+}
+
+
+function clearFieldErrors(): void {
+  fieldErrorMap.value = {};
+}
 
 async function submitRegistration(): Promise<void> {
   const isFormValid = await formReference.value?.validate();
@@ -222,6 +245,8 @@ async function submitRegistration(): Promise<void> {
   Loading.show();
 
   try {
+    clearFieldErrors();
+
     await authenticationStore.registerAccount({
       name: registerForm.fullName.trim(),
       username: registerForm.userName.trim(),
@@ -229,45 +254,32 @@ async function submitRegistration(): Promise<void> {
       password: registerForm.userPassword,
       password_confirmation: registerForm.userPasswordConfirmation,
     });
+
     Notify.create({
-      type: 'positive',
-      message: 'Conta criada e login efetuado! 🎉',
-      position: 'top-right',
+      type: "positive",
+      message: "Conta criada e login efetuado! 🎉",
+      position: "top-right",
     });
 
-    await router.push('/');
-  } catch (error) {
-    const domainError = error as DomainError;
-    notifyError(domainError);
-    const fieldName = pickFieldToFocus(domainError);
+    await router.push("/");
+  } catch (unknownError) {
+    const domainError = mapHttpToDomainError(unknownError);
+    const mappedErrors = mapDomainErrorToFieldErrorMap(domainError);
+    fieldErrorMap.value = mappedErrors;
 
-    if (fieldName) {
-      return;
-    }
+    Notify.create({
+      type: "negative",
+      message: domainError.message,
+      position: "top-right",
+    });
   } finally {
     Loading.hide();
     isSubmittingRequest.value = false;
   }
 }
 
-function togglePasswordVisibility(): void {
-  isShowingPassword.value = !isShowingPassword.value;
-}
-
-function togglePasswordConfirmationVisibility(): void {
-  isShowingPasswordConfirmation.value = !isShowingPasswordConfirmation.value;
-}
-
-function setPasswordVisibilityWhilePressing(value: boolean): void {
-  isShowingPassword.value = value;
-}
-
-function setPasswordConfirmationVisibilityWhilePressing(value: boolean): void {
-  isShowingPasswordConfirmation.value = value;
-}
-
 async function goToLogin(): Promise<void> {
-  await router.push('/login');
+  await router.push("/login");
 }
 
 const formActions = {
@@ -275,10 +287,7 @@ const formActions = {
   goToLogin,
   togglePasswordVisibility,
   togglePasswordConfirmationVisibility,
-  setPasswordVisibilityWhilePressing,
-  setPasswordConfirmationVisibilityWhilePressing,
 };
-
 </script>
 
 <style scoped>
